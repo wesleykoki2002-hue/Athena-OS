@@ -11,6 +11,7 @@ export type ProjectOption = {
 };
 
 export type ProjectModuleOption = {
+  id: string;
   project_key: string;
   module_key: string;
   name: string;
@@ -21,6 +22,8 @@ export type ProjectModuleOption = {
 type StartBuildValues = {
   projectKey: string;
   moduleKey: string;
+  intakeId: string;
+  preparationPackageId: string;
   buildId: string;
   buildTitle: string;
   targetSystem: string;
@@ -209,6 +212,44 @@ export default function StartBuildForm({
           </p>
         </div>
 
+        <div className="md:col-span-2 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-medium text-blue-900">
+            Governed lifecycle evidence
+          </p>
+          <p className="mt-1 text-xs leading-5 text-blue-800/80">
+            These UUIDs identify the approved Intake and its exact preparation
+            package. They are required only when the separate governed
+            assignment/start action is used. They never assign a build by
+            themselves.
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-black/70">
+            Approved Intake ID
+          </label>
+
+          <input
+            name="intake_id"
+            defaultValue={initialValues.intakeId}
+            placeholder="Canonical approved Intake UUID"
+            className="w-full rounded-2xl border border-black/10 bg-[#fbfaf7] px-4 py-3 font-mono outline-none focus:border-black"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-black/70">
+            Preparation package ID
+          </label>
+
+          <input
+            name="preparation_package_id"
+            defaultValue={initialValues.preparationPackageId}
+            placeholder="Exact zero-build-ID package UUID"
+            className="w-full rounded-2xl border border-black/10 bg-[#fbfaf7] px-4 py-3 font-mono outline-none focus:border-black"
+          />
+        </div>
+
         <div>
           <label className="mb-2 block text-sm font-medium text-black/70">
             Build ID
@@ -220,6 +261,11 @@ export default function StartBuildForm({
             required
             className="w-full rounded-2xl border border-black/10 bg-[#fbfaf7] px-4 py-3 font-mono outline-none focus:border-black"
           />
+
+          <p className="mt-1 text-xs text-black/35">
+            Prompt-generation field only. The governed lifecycle ignores this
+            value and derives the canonical build ID under database locking.
+          </p>
         </div>
 
         <div>

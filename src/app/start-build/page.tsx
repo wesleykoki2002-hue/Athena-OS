@@ -8,6 +8,9 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { createAthenaCoreClient } from "@/lib/supabase/server";
+import {
+  startCanonicalBuildLifecycleAndRedirect
+} from "./lifecycle-actions";
 import StartBuildForm, {
   type ProjectModuleOption,
   type ProjectOption
@@ -18,6 +21,8 @@ type StartBuildPageProps = {
     project_name?: string;
     project_key?: string;
     module_key?: string;
+    intake_id?: string;
+    preparation_package_id?: string;
     build_id?: string;
     build_title?: string;
     target_system?: string;
@@ -25,6 +30,11 @@ type StartBuildPageProps = {
     local_folder?: string;
     goal?: string;
     separation_notes?: string;
+    lifecycle_status?: string;
+    lifecycle_error?: string;
+    lifecycle_build_id?: string;
+    lifecycle_transition_id?: string;
+    lifecycle_idempotent_replay?: string;
   }>;
 };
 
@@ -136,7 +146,7 @@ export default async function StartBuildPage({
 
     supabase
       .from("athena_project_modules")
-      .select("project_key, module_key, name, priority, status")
+      .select("id, project_key, module_key, name, priority, status")
       .neq("status", "archived")
       .order("project_key", { ascending: true })
       .order("priority", { ascending: true })
@@ -184,7 +194,12 @@ export default async function StartBuildPage({
     ) || null;
 
   const moduleKey = selectedModule?.module_key || "";
+  const moduleId = selectedModule?.id || "";
 
+  const intakeId = clean(query.intake_id);
+  const preparationPackageId = clean(
+    query.preparation_package_id
+  );
   const buildId = clean(query.build_id);
   const buildTitle = clean(query.build_title);
   const targetSystem = clean(query.target_system);
@@ -192,6 +207,14 @@ export default async function StartBuildPage({
   const localFolder = clean(query.local_folder);
   const goal = clean(query.goal);
   const separationNotes = clean(query.separation_notes);
+  const lifecycleStatus = clean(query.lifecycle_status);
+  const lifecycleError = clean(query.lifecycle_error);
+  const lifecycleBuildId = clean(query.lifecycle_build_id);
+  const lifecycleTransitionId = clean(
+    query.lifecycle_transition_id
+  );
+  const lifecycleIdempotentReplay =
+    clean(query.lifecycle_idempotent_replay) === "true";
 
   const hasPrompt = Boolean(
     projectName &&
@@ -267,6 +290,17 @@ export default async function StartBuildPage({
     Boolean(requestedModuleKey) &&
     Boolean(selectedProject) &&
     !selectedModule;
+
+  const lifecycleReady = Boolean(
+    intakeId &&
+      preparationPackageId &&
+      projectKey &&
+      moduleKey &&
+      moduleId &&
+      buildTitle &&
+      targetSystem &&
+      trackingSystem
+  );
 
   return (
     <main className="min-h-screen bg-[#f5f1ea] px-6 py-8 text-[#171717]">
@@ -346,13 +380,15 @@ export default async function StartBuildPage({
           ) : null}
 
           <StartBuildForm
-            key={`${projectKey}:${moduleKey}:${buildId}:${buildTitle}`}
+            key={`${projectKey}:${moduleKey}:${intakeId}:${preparationPackageId}:${buildId}:${buildTitle}`}
             projects={projects}
             modules={modules}
             registryError={registryError}
             initialValues={{
               projectKey,
               moduleKey,
+              intakeId,
+              preparationPackageId,
               buildId,
               buildTitle,
               targetSystem,
@@ -362,6 +398,163 @@ export default async function StartBuildPage({
               separationNotes
             }}
           />
+        </section>
+
+        <section className="mb-6 rounded-[2.5rem] border border-black/10 bg-white p-8 shadow-sm">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-black/45">
+                Canonical control-plane operation
+              </p>
+              <h2 className="text-3xl font-semibold">
+                Governed assignment and formal start
+              </h2>
+            </div>
+
+            <div className="rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800">
+              Database derives the build ID
+            </div>
+          </div>
+
+          <p className="max-w-4xl text-sm leading-6 text-black/60">
+            This is separate from starter-prompt generation. The server verifies
+            the signed operator session, approved Intake, exact preparation
+            package, canonical registries, prior-build closure, repository,
+            handoff, Supabase identity, and collision state. The submitted
+            Build ID field is never sent to the lifecycle RPC.
+          </p>
+
+          {lifecycleStatus === "started" ? (
+            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm text-green-800">
+              <p className="font-semibold">
+                Canonical build assignment and formal start verified.
+              </p>
+              <p className="mt-2 font-mono">
+                Build ID: {lifecycleBuildId || buildId}
+              </p>
+              <p className="mt-1 break-all font-mono">
+                Transition: {lifecycleTransitionId || "Not returned"}
+              </p>
+              <p className="mt-2">
+                Idempotent replay: {lifecycleIdempotentReplay ? "yes" : "no"}
+              </p>
+              <p className="mt-2">
+                No timer, QA, completion, or build log was created implicitly.
+              </p>
+            </div>
+          ) : null}
+
+          {lifecycleStatus === "error" && lifecycleError ? (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+              <p className="font-semibold">
+                Governed lifecycle request failed closed.
+              </p>
+              <p className="mt-2 break-words">{lifecycleError}</p>
+            </div>
+          ) : null}
+
+          <form
+            action={startCanonicalBuildLifecycleAndRedirect}
+            className="mt-6 grid gap-4 rounded-2xl border border-black/10 bg-[#fbfaf7] p-5 md:grid-cols-2"
+          >
+            <input type="hidden" name="intake_id" value={intakeId} />
+            <input
+              type="hidden"
+              name="preparation_package_id"
+              value={preparationPackageId}
+            />
+            <input type="hidden" name="project_key" value={projectKey} />
+            <input type="hidden" name="module_key" value={moduleKey} />
+            <input type="hidden" name="module_id" value={moduleId} />
+            <input type="hidden" name="build_name" value={buildTitle} />
+            <input
+              type="hidden"
+              name="target_system"
+              value={targetSystem}
+            />
+            <input
+              type="hidden"
+              name="tracking_system"
+              value={trackingSystem}
+            />
+
+            <input
+              type="hidden"
+              name="return_project_name"
+              value={projectName}
+            />
+            <input
+              type="hidden"
+              name="return_build_id"
+              value={buildId}
+            />
+            <input
+              type="hidden"
+              name="return_local_folder"
+              value={localFolder}
+            />
+            <input type="hidden" name="return_goal" value={goal} />
+            <input
+              type="hidden"
+              name="return_separation_notes"
+              value={separationNotes}
+            />
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-black/40">
+                Approved Intake
+              </p>
+              <p className="mt-1 break-all font-mono text-sm">
+                {intakeId || "Not provided"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-black/40">
+                Preparation package
+              </p>
+              <p className="mt-1 break-all font-mono text-sm">
+                {preparationPackageId || "Not provided"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-black/40">
+                Canonical project / module
+              </p>
+              <p className="mt-1 font-mono text-sm">
+                {projectKey || "-"} / {moduleKey || "-"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-black/40">
+                Build name
+              </p>
+              <p className="mt-1 text-sm">
+                {buildTitle || "Not provided"}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={!lifecycleReady || lifecycleStatus === "started"}
+              className="md:col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-4 text-sm font-medium text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              {lifecycleStatus === "started"
+                ? "Canonical build already started"
+                : "Assign and formally start canonical build"}
+            </button>
+          </form>
+
+          {!lifecycleReady ? (
+            <p className="mt-4 text-sm text-amber-700">
+              Generate or refresh the starter fields with an approved Intake,
+              exact preparation package, registered module, build title, target
+              system, and tracking system before requesting formal start.
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-[2.5rem] border border-black/10 bg-white p-8 shadow-sm">
