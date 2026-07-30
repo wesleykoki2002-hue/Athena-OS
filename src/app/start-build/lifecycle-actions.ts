@@ -8,11 +8,14 @@ import { requireLifecycleOperatorSession } from
 import {
   verifyCanonicalBuildLifecycleLocalEvidence,
 } from "@/lib/build-lifecycle/local-evidence";
+import {
+  gateAndStartCanonicalBuildLifecycle,
+} from "@/lib/build-lifecycle/pre-build-gate";
 import type {
   CanonicalBuildLifecycleRequest,
   CanonicalBuildLifecycleResult,
+  CanonicalBuildLifecycleStartResponse,
 } from "@/lib/build-lifecycle/types";
-import { createAthenaCoreClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -79,12 +82,14 @@ function deterministicOperationKey(
   operatorKey: string,
   handoffSha256: string,
   repositoryHead: string,
+  repositoryEvidenceSha256: string,
 ): string {
   const requestIdentity = canonicalJson({
     ...request,
     operatorKey,
     handoffSha256,
     repositoryHead,
+    repositoryEvidenceSha256,
   });
   const digest = createHash("sha256")
     .update(requestIdentity, "utf8")
@@ -93,7 +98,9 @@ function deterministicOperationKey(
   return `build-lifecycle:${digest}`;
 }
 
-function parseRequest(formData: FormData): CanonicalBuildLifecycleRequest {
+function parseCanonicalBuildLifecycleRequest(
+  formData: FormData,
+): CanonicalBuildLifecycleRequest {
   return {
     intakeId: validateUuid(
       requiredText(formData.get("intake_id"), "intake_id"),
@@ -150,6 +157,9 @@ function readAfterWriteMatches(
     result.module_id === request.moduleId &&
     result.repository_head === repositoryHead &&
     result.handoff_sha256 === handoffSha256 &&
+    /^[0-9a-f]{64}$/.test(result.gate_scope_hash) &&
+    /^[0-9a-f]{64}$/.test(result.gate_request_hash) &&
+    Boolean(result.gate_evaluation_id) &&
     result.timer_started === false &&
     result.qa_created === false &&
     result.completion_created === false &&
@@ -195,8 +205,8 @@ function publicFailureMessage(error: unknown): string {
 
 export async function startCanonicalBuildLifecycle(
   formData: FormData,
-): Promise<CanonicalBuildLifecycleResult> {
-  const request = parseRequest(formData);
+): Promise<CanonicalBuildLifecycleStartResponse> {
+  const request = parseCanonicalBuildLifecycleRequest(formData);
   const operator = await requireLifecycleOperatorSession();
   const localEvidence =
     await verifyCanonicalBuildLifecycleLocalEvidence();
@@ -205,58 +215,39 @@ export async function startCanonicalBuildLifecycle(
     operator.operatorKey,
     localEvidence.handoffSha256,
     localEvidence.repositoryHead,
+    localEvidence.repositoryEvidenceSha256,
   );
 
   const requestEvidence = {
     local_handoff_verified: true,
     repository_head_verified: true,
+    repository_tree_verified: true,
+    repository_evidence_verified: true,
     tracked_diff_empty: localEvidence.trackedDiffEmpty,
     staged_diff_empty: localEvidence.stagedDiffEmpty,
     supabase_project_verified: true,
     operator_session_verified: true,
     handoff_path: localEvidence.handoffPath,
-    evidence_schema: "canonical-build-lifecycle-server-evidence-v1",
+    evidence_schema: "canonical-pre-build-gate-server-evidence-v1",
   };
 
-  const supabase = createAthenaCoreClient();
-  const { data, error } = await supabase.rpc(
-    "athena_build_lifecycle_assign_and_start",
-    {
-      p_intake_id: request.intakeId,
-      p_preparation_package_id: request.preparationPackageId,
-      p_project_key: request.projectKey,
-      p_module_key: request.moduleKey,
-      p_module_id: request.moduleId,
-      p_build_name: request.buildName,
-      p_target_system: request.targetSystem,
-      p_tracking_system: request.trackingSystem,
-      p_repository_path: localEvidence.repositoryPath,
-      p_repository_head: localEvidence.repositoryHead,
-      p_supabase_project_ref: localEvidence.supabaseProjectRef,
-      p_handoff_version: localEvidence.handoffVersion,
-      p_handoff_sha256: localEvidence.handoffSha256,
-      p_operator_key: operator.operatorKey,
-      p_operator_display_name: operator.operatorDisplayName,
-      p_operation_key: operationKey,
-      p_request_evidence: requestEvidence,
-    },
-  );
-
-  if (error) {
-    throw new Error(
-      `Canonical build lifecycle RPC failed: ${error.message}`,
-    );
-  }
-
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error(
-      "Canonical build lifecycle RPC returned no verified result object.",
-    );
-  }
-
-  const result = data as CanonicalBuildLifecycleResult;
+  const result = await gateAndStartCanonicalBuildLifecycle({
+    request,
+    localEvidence,
+    operatorKey: operator.operatorKey,
+    operatorDisplayName: operator.operatorDisplayName,
+    operationKey,
+    overrideReason: optionalText(formData.get("override_reason")),
+    acknowledgedReasonCodes: formData
+      .getAll("override_acknowledged_reason_codes")
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    requestEvidence,
+  });
 
   if (
+    result.status === "canonical_build_assigned_and_started" &&
     !readAfterWriteMatches(
       result,
       request,
@@ -265,7 +256,7 @@ export async function startCanonicalBuildLifecycle(
     )
   ) {
     throw new Error(
-      "Canonical build lifecycle result failed server-side read-after-write verification.",
+      "Gate-enforced lifecycle result failed server-side read-after-write verification.",
     );
   }
 
@@ -276,7 +267,7 @@ export async function startCanonicalBuildLifecycleAndRedirect(
   formData: FormData,
 ): Promise<never> {
   const parameters = returnSearchParameters(formData);
-  let result: CanonicalBuildLifecycleResult | null = null;
+  let result: CanonicalBuildLifecycleStartResponse | null = null;
   let failureMessage = "";
 
   try {
@@ -291,20 +282,35 @@ export async function startCanonicalBuildLifecycleAndRedirect(
     redirect(`/start-build?${parameters.toString()}`);
   }
 
-  const promptBuildTitle = result.build_title.startsWith(
-    `${result.build_id} `,
-  )
-    ? result.build_title.slice(result.build_id.length + 1)
-    : result.build_title;
+  parameters.set("gate_evaluation_id", result.gate_evaluation_id);
+  parameters.set("gate_classification", result.gate_classification);
+  parameters.set("gate_decision", result.gate_decision);
+  parameters.set("gate_scope_hash", result.gate_scope_hash);
+  parameters.set("gate_override_used", String(result.gate_override_used));
+  parameters.set("gate_narrowed_scope", result.gate_narrowed_scope);
 
-  parameters.set("build_id", result.build_id);
+  if (result.status === "canonical_pre_build_gate_blocked") {
+    parameters.set("lifecycle_status", "blocked");
+    parameters.set("lifecycle_idempotent_replay", String(result.idempotent_replay));
+    parameters.set("gate_blocking_reasons", result.gate_blocking_reasons.join("|"));
+    redirect(`/start-build?${parameters.toString()}`);
+  }
+
+  const startedResult: CanonicalBuildLifecycleResult = result;
+  const promptBuildTitle = startedResult.build_title.startsWith(
+    `${startedResult.build_id} `,
+  )
+    ? startedResult.build_title.slice(startedResult.build_id.length + 1)
+    : startedResult.build_title;
+
+  parameters.set("build_id", startedResult.build_id);
   parameters.set("build_title", promptBuildTitle);
   parameters.set("lifecycle_status", "started");
-  parameters.set("lifecycle_build_id", result.build_id);
-  parameters.set("lifecycle_transition_id", result.transition_id);
+  parameters.set("lifecycle_build_id", startedResult.build_id);
+  parameters.set("lifecycle_transition_id", startedResult.transition_id);
   parameters.set(
     "lifecycle_idempotent_replay",
-    String(result.idempotent_replay),
+    String(startedResult.idempotent_replay),
   );
   parameters.delete("lifecycle_error");
 

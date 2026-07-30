@@ -7,6 +7,16 @@ import {
   Rocket,
   ShieldCheck
 } from "lucide-react";
+import {
+  verifyCanonicalBuildLifecycleLocalEvidence
+} from "@/lib/build-lifecycle/local-evidence";
+import {
+  previewCanonicalPreBuildGate
+} from "@/lib/build-lifecycle/pre-build-gate";
+import type {
+  CanonicalBuildLifecycleRequest,
+  CanonicalPreBuildGatePreviewResult
+} from "@/lib/build-lifecycle/types";
 import { createAthenaCoreClient } from "@/lib/supabase/server";
 import {
   startCanonicalBuildLifecycleAndRedirect
@@ -35,11 +45,25 @@ type StartBuildPageProps = {
     lifecycle_build_id?: string;
     lifecycle_transition_id?: string;
     lifecycle_idempotent_replay?: string;
+    gate_evaluation_id?: string;
+    gate_classification?: string;
+    gate_decision?: string;
+    gate_scope_hash?: string;
+    gate_override_used?: string;
+    gate_narrowed_scope?: string;
+    gate_blocking_reasons?: string;
   }>;
 };
 
 function clean(input: string | undefined) {
   return input?.trim() || "";
+}
+
+function normalizeBuildName(value: string) {
+  return value
+    .replace(/^\s*[0-9]{4}\s+Build title:\s*/i, "")
+    .replace(/^\s*Build title:\s*/i, "")
+    .trim();
 }
 
 function buildStarterPrompt(input: {
@@ -53,6 +77,12 @@ function buildStarterPrompt(input: {
   localFolder: string;
   goal: string;
   separationNotes: string;
+  gateEvaluationId: string;
+  gateClassification: string;
+  gateDecision: string;
+  gateScopeHash: string;
+  gateOverrideUsed: boolean;
+  gateNarrowedScope: string;
 }) {
   return `We are starting ${input.buildId} ${input.buildTitle}.
 
@@ -66,6 +96,16 @@ Important project separation:
 
 Critical separation rule:
 ${input.separationNotes}
+
+Mandatory pre-build gate:
+- Evaluation ID: ${input.gateEvaluationId || "Not yet persisted"}
+- Classification: ${input.gateClassification || "Not yet evaluated"}
+- Decision: ${input.gateDecision || "Not yet evaluated"}
+- Scope hash: ${input.gateScopeHash || "Not yet persisted"}
+- Governed override used: ${input.gateOverrideUsed ? "yes" : "no"}
+- Allowed implementation delta: ${input.gateNarrowedScope || "Use the approved preparation-package scope only."}
+
+Do not rebuild completed or already-existing capability outside the allowed implementation delta.
 
 Current goal:
 ${input.goal}
@@ -215,6 +255,16 @@ export default async function StartBuildPage({
   );
   const lifecycleIdempotentReplay =
     clean(query.lifecycle_idempotent_replay) === "true";
+  const gateEvaluationId = clean(query.gate_evaluation_id);
+  const gateClassification = clean(query.gate_classification);
+  const gateDecision = clean(query.gate_decision);
+  const gateScopeHash = clean(query.gate_scope_hash);
+  const gateOverrideUsed = clean(query.gate_override_used) === "true";
+  const gateNarrowedScope = clean(query.gate_narrowed_scope);
+  const gateBlockingReasons = clean(query.gate_blocking_reasons)
+    .split("|")
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   const hasPrompt = Boolean(
     projectName &&
@@ -226,7 +276,10 @@ export default async function StartBuildPage({
       trackingSystem &&
       localFolder &&
       goal &&
-      separationNotes
+      separationNotes &&
+      lifecycleStatus === "started" &&
+      gateEvaluationId &&
+      gateScopeHash
   );
 
   const starterPrompt = hasPrompt
@@ -240,7 +293,13 @@ export default async function StartBuildPage({
         trackingSystem,
         localFolder,
         goal,
-        separationNotes
+        separationNotes,
+        gateEvaluationId,
+        gateClassification,
+        gateDecision,
+        gateScopeHash,
+        gateOverrideUsed,
+        gateNarrowedScope
       })
     : "";
 
@@ -301,6 +360,58 @@ export default async function StartBuildPage({
       targetSystem &&
       trackingSystem
   );
+
+  let gatePreview: CanonicalPreBuildGatePreviewResult | null = null;
+  let gatePreviewError = "";
+
+  if (lifecycleReady && lifecycleStatus !== "started") {
+    try {
+      const localEvidence =
+        await verifyCanonicalBuildLifecycleLocalEvidence();
+      const request: CanonicalBuildLifecycleRequest = {
+        intakeId,
+        preparationPackageId,
+        projectKey,
+        moduleKey,
+        moduleId,
+        buildName: normalizeBuildName(buildTitle),
+        targetSystem,
+        trackingSystem
+      };
+
+      gatePreview = await previewCanonicalPreBuildGate({
+        request,
+        localEvidence,
+        requestEvidence: {
+          local_handoff_verified: true,
+          repository_head_verified: true,
+          repository_tree_verified: true,
+          repository_evidence_verified: true,
+          tracked_diff_empty: true,
+          staged_diff_empty: true,
+          supabase_project_verified: true,
+          preview_only: true,
+          evidence_schema: "canonical-pre-build-gate-preview-v1"
+        }
+      });
+    } catch (error) {
+      gatePreviewError =
+        error instanceof Error
+          ? error.message
+          : "Mandatory pre-build gate preview failed without a verified error.";
+    }
+  }
+
+  const effectiveGateClassification =
+    gateClassification || gatePreview?.classification || "";
+  const effectiveGateDecision =
+    gateDecision || gatePreview?.decision || "";
+  const effectiveGateScopeHash =
+    gateScopeHash || gatePreview?.scope_hash || "";
+  const effectiveBlockingReasons =
+    gateBlockingReasons.length > 0
+      ? gateBlockingReasons
+      : gatePreview?.blocking_reasons || [];
 
   return (
     <main className="min-h-screen bg-[#f5f1ea] px-6 py-8 text-[#171717]">
@@ -420,8 +531,10 @@ export default async function StartBuildPage({
             This is separate from starter-prompt generation. The server verifies
             the signed operator session, approved Intake, exact preparation
             package, canonical registries, prior-build closure, repository,
-            handoff, Supabase identity, and collision state. The submitted
-            Build ID field is never sent to the lifecycle RPC.
+            handoff, Supabase identity, existing capability, redundancy,
+            scope narrowing, and collision state. The submitted Build ID field
+            is never sent to the lifecycle RPC. The database recomputes the gate
+            atomically before it permits assignment and formal start.
           </p>
 
           {lifecycleStatus === "started" ? (
@@ -439,8 +552,41 @@ export default async function StartBuildPage({
                 Idempotent replay: {lifecycleIdempotentReplay ? "yes" : "no"}
               </p>
               <p className="mt-2">
+                Gate classification: {effectiveGateClassification || "Not returned"}
+              </p>
+              <p className="mt-1">
+                Gate decision: {effectiveGateDecision || "Not returned"}
+              </p>
+              <p className="mt-1 break-all font-mono">
+                Gate evaluation: {gateEvaluationId || "Not returned"}
+              </p>
+              <p className="mt-1 break-all font-mono">
+                Scope hash: {effectiveGateScopeHash || "Not returned"}
+              </p>
+              <p className="mt-1">
+                Governed override used: {gateOverrideUsed ? "yes" : "no"}
+              </p>
+              <p className="mt-2">
                 No timer, QA, completion, or build log was created implicitly.
               </p>
+            </div>
+          ) : null}
+
+          {lifecycleStatus === "blocked" ? (
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+              <p className="font-semibold">
+                Mandatory pre-build gate blocked formal start.
+              </p>
+              <p className="mt-2">
+                Classification: {effectiveGateClassification || "Not returned"}
+              </p>
+              {effectiveBlockingReasons.length > 0 ? (
+                <ul className="mt-3 list-disc space-y-1 pl-5">
+                  {effectiveBlockingReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
 
@@ -450,6 +596,73 @@ export default async function StartBuildPage({
                 Governed lifecycle request failed closed.
               </p>
               <p className="mt-2 break-words">{lifecycleError}</p>
+            </div>
+          ) : null}
+
+          {gatePreviewError ? (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+              <p className="font-semibold">
+                Mandatory pre-build gate preview failed closed.
+              </p>
+              <p className="mt-2 break-words">{gatePreviewError}</p>
+            </div>
+          ) : null}
+
+          {gatePreview ? (
+            <div className={`mt-6 rounded-2xl border p-5 text-sm ${
+              gatePreview.decision === "pass"
+                ? "border-green-200 bg-green-50 text-green-900"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            }`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="font-semibold">Mandatory pre-build gate preview</p>
+                <span className="rounded-full bg-white/70 px-3 py-1 font-medium">
+                  {gatePreview.decision.toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <p>Classification: <strong>{gatePreview.classification}</strong></p>
+                <p>Candidate matches: <strong>{gatePreview.candidate_count}</strong></p>
+                <p>Top score: <strong>{gatePreview.top_match_score.toFixed(4)}</strong></p>
+                <p className="break-all font-mono">Scope hash: {gatePreview.scope_hash}</p>
+              </div>
+              <p className="mt-4 font-medium">Allowed implementation delta</p>
+              <p className="mt-1 leading-6">{gatePreview.narrowed_scope}</p>
+              {gatePreview.missing_evidence.length > 0 ? (
+                <>
+                  <p className="mt-4 font-medium">Missing evidence</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {gatePreview.missing_evidence.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {gatePreview.blocking_reasons.length > 0 ? (
+                <>
+                  <p className="mt-4 font-medium">Blocking reasons</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {gatePreview.blocking_reasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {gatePreview.candidates.length > 0 ? (
+                <>
+                  <p className="mt-4 font-medium">Top candidate evidence</p>
+                  <div className="mt-2 space-y-2">
+                    {gatePreview.candidates.slice(0, 5).map((candidate) => (
+                      <div key={`${candidate.source_type}:${candidate.source_id}`} className="rounded-xl border border-black/10 bg-white/60 p-3">
+                        <p className="font-medium">{candidate.candidate_title}</p>
+                        <p className="mt-1 text-xs">
+                          {candidate.source_type} · score {candidate.final_score.toFixed(4)} · completed {candidate.completed ? "yes" : "no"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -536,15 +749,57 @@ export default async function StartBuildPage({
               </p>
             </div>
 
+            {gatePreview?.decision === "block" ? (
+              <div className="md:col-span-2 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+                <p className="font-semibold text-amber-950">Governed override</p>
+                <p className="mt-1 text-sm leading-6 text-amber-900/80">
+                  A blocked classification can proceed only after the signed
+                  operator gives a concrete reason and acknowledges every
+                  persisted blocking-reason code. The database verifies this
+                  again in the same transaction as formal start.
+                </p>
+                <label className="mt-4 block text-sm font-medium text-amber-950">
+                  Override reason
+                </label>
+                <textarea
+                  name="override_reason"
+                  rows={4}
+                  required
+                  className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-3 outline-none"
+                />
+                <div className="mt-4 space-y-2">
+                  {gatePreview.blocking_reasons.map((reason) => (
+                    <label key={reason} className="flex items-start gap-3 text-sm text-amber-950">
+                      <input
+                        type="checkbox"
+                        name="override_acknowledged_reason_codes"
+                        value={reason}
+                        required
+                        className="mt-1"
+                      />
+                      <span>I acknowledge: {reason}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <button
               type="submit"
-              disabled={!lifecycleReady || lifecycleStatus === "started"}
+              disabled={
+                !lifecycleReady ||
+                lifecycleStatus === "started" ||
+                !gatePreview ||
+                Boolean(gatePreviewError)
+              }
               className="md:col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-4 text-sm font-medium text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ShieldCheck className="h-4 w-4" />
               {lifecycleStatus === "started"
                 ? "Canonical build already started"
-                : "Assign and formally start canonical build"}
+                : gatePreview?.decision === "block"
+                  ? "Override gate and formally start canonical build"
+                  : "Pass gate, assign, and formally start canonical build"}
             </button>
           </form>
 
@@ -552,7 +807,8 @@ export default async function StartBuildPage({
             <p className="mt-4 text-sm text-amber-700">
               Generate or refresh the starter fields with an approved Intake,
               exact preparation package, registered module, build title, target
-              system, and tracking system before requesting formal start.
+              system, and tracking system before requesting the mandatory gate
+              and formal start.
             </p>
           ) : null}
         </section>
@@ -576,7 +832,11 @@ export default async function StartBuildPage({
               }`}
             >
               <FileText className="h-4 w-4" />
-              {hasPrompt ? "Ready to copy" : "Complete the starter fields"}
+              {hasPrompt
+                ? "Ready to copy"
+                : lifecycleReady
+                  ? "Formal gate start required"
+                  : "Complete the starter fields"}
             </div>
           </div>
 
@@ -584,7 +844,7 @@ export default async function StartBuildPage({
             readOnly
             value={starterPrompt}
             rows={34}
-            placeholder="Select a registered project and module, complete every starter field, and generate the prompt."
+            placeholder="Complete the starter fields, pass the mandatory gate, and formally start the canonical build before copying the prompt."
             className="w-full rounded-2xl border border-black/10 bg-[#171717] px-4 py-4 font-mono text-sm leading-6 text-white placeholder:text-white/40 outline-none"
           />
 

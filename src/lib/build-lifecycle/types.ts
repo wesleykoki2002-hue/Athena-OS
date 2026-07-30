@@ -15,9 +15,79 @@ export type CanonicalBuildLifecycleLocalEvidence = {
   handoffSha256: string;
   repositoryPath: string;
   repositoryHead: string;
+  repositoryTree: string;
+  repositoryEvidenceSha256: string;
   supabaseProjectRef: string;
   trackedDiffEmpty: true;
   stagedDiffEmpty: true;
+};
+
+export type CanonicalPreBuildGateClassification =
+  | "new_capability"
+  | "repair_existing"
+  | "extension_existing"
+  | "duplicate_completed_scope"
+  | "insufficient_evidence";
+
+export type CanonicalPreBuildGateDecision = "pass" | "block";
+
+export type CanonicalPreBuildGateCandidate = {
+  rank: number;
+  source_type: string;
+  source_id: string;
+  candidate_project_key: string | null;
+  candidate_module_key: string | null;
+  candidate_build_id: string | null;
+  candidate_title: string;
+  candidate_status: string | null;
+  completed: boolean;
+  exact_title_match: boolean;
+  exact_scope_match: boolean;
+  title_overlap: number;
+  scope_overlap: number;
+  final_score: number;
+  matching_tokens: string[];
+  evidence: Record<string, unknown>;
+};
+
+export type CanonicalPreBuildGatePreviewResult = {
+  status: "canonical_pre_build_gate_preview";
+  classification: CanonicalPreBuildGateClassification;
+  decision: CanonicalPreBuildGateDecision;
+  start_allowed: boolean;
+  requires_override: boolean;
+  scope_hash: string;
+  request_hash: string;
+  top_match_score: number;
+  candidate_count: number;
+  narrowed_scope: string;
+  missing_evidence: string[];
+  blocking_reasons: string[];
+  candidates: CanonicalPreBuildGateCandidate[];
+  repository_head: string;
+  repository_tree: string;
+  repository_evidence_sha256: string;
+  handoff_sha256: string;
+};
+
+export type CanonicalPreBuildGateBlockedResult = {
+  status: "canonical_pre_build_gate_blocked";
+  gate_evaluation_id: string;
+  gate_classification: CanonicalPreBuildGateClassification;
+  gate_decision: "block";
+  gate_scope_hash: string;
+  gate_request_hash: string;
+  gate_top_match_score: number;
+  gate_candidate_count: number;
+  gate_narrowed_scope: string;
+  gate_missing_evidence: string[];
+  gate_blocking_reasons: string[];
+  gate_override_used: false;
+  idempotent_replay: boolean;
+  timer_started: false;
+  qa_created: false;
+  completion_created: false;
+  build_log_created: false;
 };
 
 export type CanonicalBuildLifecycleResult = {
@@ -53,4 +123,20 @@ export type CanonicalBuildLifecycleResult = {
   qa_created: false;
   completion_created: false;
   build_log_created: false;
+  gate_evaluation_id: string;
+  gate_override_id: string | null;
+  gate_classification: CanonicalPreBuildGateClassification;
+  gate_decision: "pass" | "override";
+  gate_scope_hash: string;
+  gate_request_hash: string;
+  gate_top_match_score: number;
+  gate_candidate_count: number;
+  gate_narrowed_scope: string;
+  gate_missing_evidence: string[];
+  gate_blocking_reasons: string[];
+  gate_override_used: boolean;
 };
+
+export type CanonicalBuildLifecycleStartResponse =
+  | CanonicalBuildLifecycleResult
+  | CanonicalPreBuildGateBlockedResult;

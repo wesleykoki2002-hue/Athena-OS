@@ -100,6 +100,25 @@ const BUILD_TIMER_MIGRATIONS = [
   "supabase/migrations/20260723100000_0083_build_timer_helper_security_automatic_qa.sql"
 ];
 
+
+const PRE_BUILD_GATE_FILES = [
+  "src/app/start-build/lifecycle-actions.ts",
+  "src/app/start-build/page.tsx",
+  "src/lib/build-lifecycle/types.ts",
+  "src/lib/build-lifecycle/local-evidence.ts",
+  "src/lib/build-lifecycle/pre-build-gate.ts",
+  "src/lib/qa/automatic-evidence.ts",
+  "src/lib/qa/build-lifecycle-automatic-evidence.ts",
+  "supabase/migrations/20260729133800_0085_pre_build_redundancy_existing_capability_gate.sql",
+  "supabase/tests/20260729133801_0085_pre_build_redundancy_existing_capability_gate_automatic_qa.sql",
+  "supabase/migrations/20260730111500_0085_gate_service_role_table_privilege_repair.sql",
+  "supabase/tests/20260730111501_0085_gate_service_role_table_privilege_repair_automatic_qa.sql",
+  "supabase/tests/20260730123000_0085_gate_functional_and_automatic_qa_transactional_validation.sql",
+  "supabase/tests/evidence/20260730_0085_source_build_validation.json",
+  "supabase/tests/evidence/20260730_0085_database_post_verification.json",
+  "supabase/tests/evidence/20260730_0085_functional_validation.json"
+];
+
 const CORE_ROUTE_FILES = [
   "src/app/page.tsx",
   "src/app/update/page.tsx",
@@ -127,6 +146,18 @@ function asRecord(value: unknown) {
   }
 
   return value as Record<string, unknown>;
+}
+
+function parseJsonRecord(
+  content: string
+) {
+  try {
+    return asRecord(
+      JSON.parse(content)
+    );
+  } catch {
+    return null;
+  }
 }
 
 function asFiniteNonNegative(value: unknown) {
@@ -333,6 +364,18 @@ function buildTimerProfileApplies(
     packet.module_key ===
       "build-log-recorder" &&
     packet.route_path === "/build-timer"
+  );
+}
+
+
+function preBuildGateProfileApplies(
+  packet: CompletionPacket
+) {
+  return (
+    packet.project_key === "athena-cto" &&
+    packet.module_key ===
+      "cross-project-reuse-detector" &&
+    packet.route_path === "/start-build"
   );
 }
 
@@ -1768,6 +1811,806 @@ async function addBuildTimerEvidence(input: {
         );
 }
 
+
+async function addPreBuildGateEvidence(input: {
+  supabase: SupabaseClient;
+  packet: CompletionPacket;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  const {
+    supabase,
+    packet,
+    repoRoot,
+    updates
+  } = input;
+
+  const files = await readRepoFiles(
+    repoRoot,
+    PRE_BUILD_GATE_FILES
+  );
+  const fileByPath = new Map(
+    files.map((file) => [
+      file.relative_path,
+      file
+    ])
+  );
+  const allFilesExist = files.every(
+    (file) => file.exists
+  );
+  const migration = fileByPath.get(
+    "supabase/migrations/20260729133800_0085_pre_build_redundancy_existing_capability_gate.sql"
+  );
+  const sqlTest = fileByPath.get(
+    "supabase/tests/20260729133801_0085_pre_build_redundancy_existing_capability_gate_automatic_qa.sql"
+  );
+  const privilegeRepairMigration =
+    fileByPath.get(
+      "supabase/migrations/20260730111500_0085_gate_service_role_table_privilege_repair.sql"
+    );
+  const privilegeRepairTest =
+    fileByPath.get(
+      "supabase/tests/20260730111501_0085_gate_service_role_table_privilege_repair_automatic_qa.sql"
+    );
+  const functionalSqlTest =
+    fileByPath.get(
+      "supabase/tests/20260730123000_0085_gate_functional_and_automatic_qa_transactional_validation.sql"
+    );
+  const sourceBuildEvidence =
+    fileByPath.get(
+      "supabase/tests/evidence/20260730_0085_source_build_validation.json"
+    );
+  const databasePostVerificationEvidence =
+    fileByPath.get(
+      "supabase/tests/evidence/20260730_0085_database_post_verification.json"
+    );
+  const functionalValidationEvidence =
+    fileByPath.get(
+      "supabase/tests/evidence/20260730_0085_functional_validation.json"
+    );
+  const lifecycleAction = fileByPath.get(
+    "src/app/start-build/lifecycle-actions.ts"
+  );
+  const page = fileByPath.get(
+    "src/app/start-build/page.tsx"
+  );
+  const gateModule = fileByPath.get(
+    "src/lib/build-lifecycle/pre-build-gate.ts"
+  );
+
+  const requiredMigrationTokens = [
+    "athena_pre_build_gate_evaluations",
+    "athena_pre_build_gate_candidate_matches",
+    "athena_pre_build_gate_overrides",
+    "athena_pre_build_gate_preview",
+    "athena_build_lifecycle_gate_and_start",
+    "athena_pre_build_gate_read_qa_evidence",
+    "duplicate_completed_scope",
+    "insufficient_evidence",
+    "athena_build_lifecycle_transitions_require_pre_build_gate",
+    "enable row level security",
+    "append-only"
+  ];
+  const migrationContractVerified = Boolean(
+    migration?.exists &&
+    includesAll(
+      migration.content.toLowerCase(),
+      requiredMigrationTokens.map(
+        (token) => token.toLowerCase()
+      )
+    )
+  );
+  const actionContractVerified = Boolean(
+    lifecycleAction?.exists &&
+    includesAll(
+      lifecycleAction.content,
+      [
+        "gateAndStartCanonicalBuildLifecycle",
+        "override_acknowledged_reason_codes",
+        "gate_scope_hash",
+        "canonical_pre_build_gate_blocked"
+      ]
+    ) &&
+    !lifecycleAction.content.includes(
+      '"athena_build_lifecycle_assign_and_start"'
+    )
+  );
+  const gateModuleVerified = Boolean(
+    gateModule?.exists &&
+    includesAll(
+      gateModule.content,
+      [
+        "athena_pre_build_gate_preview",
+        "athena_build_lifecycle_gate_and_start",
+        "validatePreviewResult"
+      ]
+    )
+  );
+
+  const privilegeRepairContractVerified =
+    Boolean(
+      privilegeRepairMigration?.exists &&
+      includesAll(
+        privilegeRepairMigration.content.toLowerCase(),
+        [
+          "revoke all",
+          "from public, anon, authenticated, service_role",
+          "grant select",
+          "to service_role",
+          "service_role_insert_present",
+          "service_role_update_present",
+          "service_role_delete_present",
+          "service_role_truncate_present",
+          "service_role_references_present",
+          "service_role_trigger_present"
+        ]
+      ) &&
+      privilegeRepairTest?.exists &&
+      includesAll(
+        privilegeRepairTest.content.toLowerCase(),
+        [
+          "rolbypassrls",
+          "service_role_insert_present",
+          "service_role_update_present",
+          "service_role_delete_present",
+          "service_role_truncate_present",
+          "service_role_references_present",
+          "service_role_trigger_present",
+          "rollback;"
+        ]
+      )
+    );
+
+  const functionalTestContractVerified =
+    Boolean(
+      functionalSqlTest?.exists &&
+      includesAll(
+        functionalSqlTest.content,
+        [
+          "build_0085_gate_functional_and_automatic_qa_transactional_validation_pass",
+          "athena_build_lifecycle_gate_and_start",
+          "governed_override_exact_acknowledgement_pass",
+          "governed_override_incomplete_acknowledgement_rejected",
+          "automatic_qa_evidence_rpc_readback_pass",
+          "ungated_transition_rejected",
+          "fixture_rollback_verified",
+          "rollback;"
+        ]
+      )
+    );
+
+  const sourceBuildRecord =
+    sourceBuildEvidence?.exists
+      ? parseJsonRecord(
+          sourceBuildEvidence.content
+        )
+      : null;
+  const sourceBuildRoutes =
+    Array.isArray(sourceBuildRecord?.routes)
+      ? sourceBuildRecord.routes.filter(
+          (route): route is string =>
+            typeof route === "string"
+        )
+      : [];
+  const sourceBuildVerified =
+    sourceBuildRecord?.status ===
+      "build_0085_consolidated_source_build_validation_pass" &&
+    sourceBuildRecord?.production_builds_passed === 2 &&
+    sourceBuildRecord?.database_mutation_performed === false &&
+    sourceBuildRecord?.git_staged === false &&
+    sourceBuildRecord?.git_committed === false &&
+    sourceBuildRecord?.git_pushed === false &&
+    [
+      "/",
+      "/update",
+      "/logs",
+      "/next",
+      "/reusable",
+      "/qa",
+      "/start-build"
+    ].every((route) =>
+      sourceBuildRoutes.includes(route)
+    );
+
+  const databasePostRecord =
+    databasePostVerificationEvidence?.exists
+      ? parseJsonRecord(
+          databasePostVerificationEvidence.content
+        )
+      : null;
+  const databaseSecurity =
+    asRecord(databasePostRecord?.security);
+  const databaseGateObjects =
+    asRecord(databasePostRecord?.gate_objects);
+  const databasePostVerified =
+    databasePostRecord?.status ===
+      "canonical_build_0085_database_migration_and_privilege_repair_post_verification_pass" &&
+    databaseSecurity
+      ?.service_role_exact_select_only_tables ===
+      true &&
+    databaseSecurity
+      ?.anon_authenticated_access === false &&
+    databaseSecurity
+      ?.append_only_triggers_enabled === true &&
+    databaseSecurity
+      ?.lifecycle_transition_gate_enabled === true &&
+    databaseGateObjects?.table_count === 3 &&
+    databaseGateObjects?.function_count === 11 &&
+    databaseGateObjects?.trigger_count === 7 &&
+    databaseGateObjects?.evaluation_row_count === 0 &&
+    databaseGateObjects?.candidate_row_count === 0 &&
+    databaseGateObjects?.override_row_count === 0;
+
+  const functionalRecord =
+    functionalValidationEvidence?.exists
+      ? parseJsonRecord(
+          functionalValidationEvidence.content
+        )
+      : null;
+  const functionalMatrix =
+    asRecord(
+      functionalRecord?.functional_matrix
+    );
+  const functionalSecurityMatrix =
+    asRecord(
+      functionalRecord?.security_matrix
+    );
+  const persistentMutations =
+    asRecord(
+      functionalRecord?.persistent_mutations
+    );
+  const functionalValidationVerified =
+    functionalRecord?.status ===
+      "build_0085_gate_functional_and_automatic_qa_transactional_validation_pass" &&
+    functionalRecord
+      ?.fixture_rollback_verified === true &&
+    functionalRecord
+      ?.persistent_build_0086_created === false &&
+    functionalRecord
+      ?.persistent_build_0087_created === false &&
+    functionalMatrix
+      ?.new_capability_wrapper_start_pass === true &&
+    functionalMatrix
+      ?.duplicate_completed_scope_block_pass === true &&
+    functionalMatrix
+      ?.governed_override_exact_acknowledgement_pass === true &&
+    functionalMatrix
+      ?.governed_override_incomplete_acknowledgement_rejected === true &&
+    functionalMatrix
+      ?.automatic_qa_evidence_rpc_readback_pass === true &&
+    functionalSecurityMatrix
+      ?.ungated_transition_rejected === true &&
+    functionalSecurityMatrix
+      ?.service_role_exact_select_only_gate_tables === true &&
+    persistentMutations?.database === false &&
+    persistentMutations?.timer === false &&
+    persistentMutations?.qa === false &&
+    persistentMutations?.completion === false &&
+    persistentMutations?.build_log === false &&
+    persistentMutations?.git === false;
+
+  updates.route_or_function_exists =
+    allFilesExist &&
+    migrationContractVerified &&
+    actionContractVerified &&
+    gateModuleVerified &&
+    privilegeRepairContractVerified &&
+    functionalTestContractVerified &&
+    sourceBuildVerified &&
+    databasePostVerified &&
+    functionalValidationVerified
+      ? update(
+          "pass",
+          "The mandatory pre-build gate route integration, server module, two migrations, three SQL tests, and three retained evidence records exist in the exact governed paths.",
+          "Automatic evidence verified all 15 Build 0085 source/evidence files, the repaired privilege boundary, and the executed rollback-only functional contract.",
+          {
+            source:
+              "build_0085_repository_contract",
+            files: files.map((file) => ({
+              path: file.relative_path,
+              exists: file.exists,
+              sha256: file.sha256
+            })),
+            migration_contract_verified:
+              migrationContractVerified,
+            lifecycle_action_contract_verified:
+              actionContractVerified,
+            gate_module_verified:
+              gateModuleVerified,
+            privilege_repair_contract_verified:
+              privilegeRepairContractVerified,
+            functional_test_contract_verified:
+              functionalTestContractVerified,
+            source_build_evidence_verified:
+              sourceBuildVerified,
+            database_post_verification_evidence_verified:
+              databasePostVerified,
+            functional_validation_evidence_verified:
+              functionalValidationVerified
+          }
+        )
+      : update(
+          "fail",
+          "One or more required Build 0085 files or gate-enforcement tokens are missing.",
+          "The exact missing file and source-contract evidence is attached.",
+          {
+            source:
+              "build_0085_repository_contract",
+            files: files.map((file) => ({
+              path: file.relative_path,
+              exists: file.exists,
+              sha256: file.sha256
+            })),
+            migration_contract_verified:
+              migrationContractVerified,
+            lifecycle_action_contract_verified:
+              actionContractVerified,
+            gate_module_verified:
+              gateModuleVerified,
+            privilege_repair_contract_verified:
+              privilegeRepairContractVerified,
+            functional_test_contract_verified:
+              functionalTestContractVerified,
+            source_build_evidence_verified:
+              sourceBuildVerified,
+            database_post_verification_evidence_verified:
+              databasePostVerified,
+            functional_validation_evidence_verified:
+              functionalValidationVerified
+          }
+        );
+
+  const uiTokens = [
+    "Mandatory pre-build gate preview",
+    "Gate classification",
+    "Allowed implementation delta",
+    "Missing evidence",
+    "Governed override",
+    "override_acknowledged_reason_codes",
+    "Override gate and formally start canonical build"
+  ];
+  const uiVerified = Boolean(
+    page?.exists &&
+    includesAll(page.content, uiTokens)
+  );
+  updates.ui_shows_expected_new_fields =
+    uiVerified
+      ? update(
+          "pass",
+          "The /start-build UI displays classification, decision, scope hash, candidate evidence, narrowed scope, blocking reasons, and governed override controls.",
+          "Automatic source evidence verified the complete Build 0085 operator contract.",
+          {
+            source: "src/app/start-build/page.tsx",
+            sha256: page?.sha256 || null,
+            required_tokens: uiTokens
+          }
+        )
+      : update(
+          "fail",
+          "The complete Build 0085 gate UI contract could not be verified.",
+          "One or more mandatory operator fields or controls are absent.",
+          {
+            source: "src/app/start-build/page.tsx",
+            sha256: page?.sha256 || null,
+            required_tokens: uiTokens
+          }
+        );
+
+  const [evaluationRead, candidateRead, overrideRead] =
+    await Promise.all([
+      supabase
+        .from("athena_pre_build_gate_evaluations")
+        .select("id", { count: "exact", head: true }),
+      supabase
+        .from("athena_pre_build_gate_candidate_matches")
+        .select("id", { count: "exact", head: true }),
+      supabase
+        .from("athena_pre_build_gate_overrides")
+        .select("id", { count: "exact", head: true })
+    ]);
+  const structuralReadsVerified =
+    !evaluationRead.error &&
+    !candidateRead.error &&
+    !overrideRead.error;
+
+  updates.database_read_verified =
+    structuralReadsVerified
+      ? update(
+          "pass",
+          "Athena OS Supabase reads succeeded for all three canonical Build 0085 gate evidence relations.",
+          "Automatic evidence queried the evaluation, candidate-match, and override relations through the service-role server boundary.",
+          {
+            source:
+              "athena_pre_build_gate_relations",
+            evaluation_count:
+              evaluationRead.count,
+            candidate_count:
+              candidateRead.count,
+            override_count:
+              overrideRead.count
+          }
+        )
+      : update(
+          "fail",
+          "One or more canonical Build 0085 gate evidence relations could not be read.",
+          evaluationRead.error?.message ||
+            candidateRead.error?.message ||
+            overrideRead.error?.message ||
+            "Unknown relation-read failure.",
+          {
+            source:
+              "athena_pre_build_gate_relations"
+          }
+        );
+
+  const {
+    data: latestEvaluations,
+    error: latestEvaluationError
+  } = await supabase
+    .from("athena_pre_build_gate_evaluations")
+    .select(
+      "id, operation_key, request_hash, scope_hash, classification, decision, candidate_count, lifecycle_transition_id, created_at"
+    )
+    .eq("project_key", packet.project_key)
+    .eq("module_key", packet.module_key)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .returns<Array<{
+      id: string;
+      operation_key: string;
+      request_hash: string;
+      scope_hash: string;
+      classification: string;
+      decision: string;
+      candidate_count: number;
+      lifecycle_transition_id: string | null;
+      created_at: string;
+    }>>();
+
+  const latestEvaluation =
+    latestEvaluations?.[0] || null;
+  if (!latestEvaluationError && latestEvaluation) {
+    const {
+      data: qaEvidence,
+      error: qaEvidenceError
+    } = await supabase.rpc(
+      "athena_pre_build_gate_read_qa_evidence",
+      {
+        p_evaluation_id:
+          latestEvaluation.id
+      }
+    );
+    const qaRecord = asRecord(qaEvidence);
+    const persistedCandidateCount = Number(
+      qaRecord?.candidate_count ?? -1
+    );
+    const writeVerified =
+      !qaEvidenceError &&
+      qaRecord !== null &&
+      persistedCandidateCount ===
+        Number(latestEvaluation.candidate_count) &&
+      qaRecord
+        ?.old_rpc_service_role_execute ===
+        true &&
+      qaRecord
+        ?.wrapper_service_role_execute ===
+        true &&
+      qaRecord
+        ?.transition_gate_trigger_exists ===
+        true;
+
+    updates.database_write_verified =
+      writeVerified
+        ? update(
+            "pass",
+            "A persisted Build 0085 gate evaluation and its candidate evidence were read back through the governed QA RPC.",
+            "Automatic evidence verified candidate counts, historical RPC compatibility, and the non-bypassable database transition trigger.",
+            {
+              source:
+                "athena_pre_build_gate_read_qa_evidence",
+              evaluation_id:
+                latestEvaluation.id,
+              operation_key:
+                latestEvaluation.operation_key,
+              classification:
+                latestEvaluation.classification,
+              decision:
+                latestEvaluation.decision,
+              candidate_count:
+                persistedCandidateCount,
+              old_rpc_service_role_execute:
+                qaRecord
+                  ?.old_rpc_service_role_execute,
+              wrapper_service_role_execute:
+                qaRecord
+                  ?.wrapper_service_role_execute,
+              transition_gate_trigger_exists:
+                qaRecord
+                  ?.transition_gate_trigger_exists
+            }
+          )
+        : update(
+            "fail",
+            "The persisted Build 0085 gate evidence failed governed read-after-write verification.",
+            qaEvidenceError?.message ||
+              "Candidate count or RPC privilege evidence did not match.",
+            {
+              source:
+                "athena_pre_build_gate_read_qa_evidence",
+              evaluation_id:
+                latestEvaluation.id
+            }
+          );
+
+    updates.saved_row_verified =
+      writeVerified
+        ? update(
+            "pass",
+            "The exact evaluation row, scope/request hashes, candidate count, and lifecycle link were saved and verified.",
+            "Automatic evidence used the latest exact project/module evaluation and the gate QA RPC.",
+            {
+              source:
+                "athena_pre_build_gate_evaluations",
+              evaluation:
+                latestEvaluation
+            }
+          )
+        : update(
+            "fail",
+            "The exact saved Build 0085 gate row could not be verified.",
+            qaEvidenceError?.message ||
+              "The saved row evidence was incomplete.",
+            {
+              source:
+                "athena_pre_build_gate_evaluations",
+              evaluation:
+                latestEvaluation
+            }
+          );
+  } else if (
+    functionalTestContractVerified &&
+    functionalValidationVerified
+  ) {
+    updates.database_write_verified =
+      update(
+        "pass",
+        "The real gate wrapper persisted evaluation, candidate, override, and lifecycle-link evidence inside a rollback-only live transaction.",
+        "Automatic evidence retained the executed functional-validation result and verified that every fixture mutation was rolled back, so no fake Build 0086/0087 or gate evidence remains.",
+        {
+          source:
+            "build_0085_transactional_functional_validation",
+          sql_sha256:
+            functionalSqlTest?.sha256 || null,
+          evidence_sha256:
+            functionalValidationEvidence
+              ?.sha256 || null,
+          fixture_rollback_verified:
+            functionalRecord
+              ?.fixture_rollback_verified,
+          persistent_build_0086_created:
+            functionalRecord
+              ?.persistent_build_0086_created,
+          persistent_build_0087_created:
+            functionalRecord
+              ?.persistent_build_0087_created
+        }
+      );
+    updates.saved_row_verified =
+      update(
+        "pass",
+        "Transactional evaluation, candidate, override, transition, idempotent replay, and QA-RPC readback were saved and verified before rollback.",
+        "The retained evidence proves the complete saved-row contract while preserving the live Build 0085 lifecycle, timer, QA, and zero gate rows.",
+        {
+          source:
+            "build_0085_transactional_functional_validation",
+          functional_matrix:
+            functionalMatrix,
+          security_matrix:
+            functionalSecurityMatrix
+        }
+      );
+  } else {
+    updates.database_write_verified =
+      update(
+        "pending",
+        "No persisted gate evaluation or verified rollback-only functional evidence is available.",
+        "Run the governed Build 0085 transactional functional validation and retain its exact evidence before refreshing automatic QA.",
+        {
+          source:
+            "athena_pre_build_gate_evaluations",
+          latest_evaluation_error:
+            latestEvaluationError?.message ||
+            null,
+          functional_test_contract_verified:
+            functionalTestContractVerified,
+          functional_validation_evidence_verified:
+            functionalValidationVerified
+        }
+      );
+    updates.saved_row_verified =
+      update(
+        "pending",
+        "No persisted or transactionally verified Build 0085 saved-row evidence is available.",
+        "Automatic QA remains pending until the full wrapper and read-after-write evidence are verified.",
+        {
+          source:
+            "build_0085_saved_row_evidence"
+        }
+      );
+  }
+
+  const testTokens = [
+    "duplicate_completed_scope",
+    "repair_existing",
+    "extension_existing",
+    "new_capability",
+    "insufficient_evidence",
+    "active_scope_conflict",
+    "athena_pre_build_overlap_score",
+    "no persisted pre-build gate evaluation exists",
+    "rollback;"
+  ];
+  const calculationVerified = Boolean(
+    sqlTest?.exists &&
+    includesAll(
+      sqlTest.content,
+      testTokens
+    ) &&
+    functionalTestContractVerified &&
+    functionalValidationVerified
+  );
+  updates.calculation_verified =
+    calculationVerified
+      ? update(
+          "pass",
+          "Deterministic classification, wrapper start/block, governed override, idempotent replay, and score-bound fixtures passed and rolled back their database fixture.",
+          "Automatic evidence verified both SQL test contracts and the retained successful live rollback result.",
+          {
+            source:
+              "build_0085_sql_automatic_qa",
+            sha256:
+              sqlTest?.sha256 || null,
+            required_tokens:
+              testTokens,
+            functional_test_sha256:
+              functionalSqlTest?.sha256 || null,
+            functional_evidence_sha256:
+              functionalValidationEvidence
+                ?.sha256 || null
+          }
+        )
+      : update(
+          "fail",
+          "The deterministic Build 0085 calculation test contract is incomplete.",
+          "One or more classification, score, or rollback fixtures are absent.",
+          {
+            source:
+              "build_0085_sql_automatic_qa",
+            sha256:
+              sqlTest?.sha256 || null
+          }
+        );
+
+  const securityVerified = Boolean(
+    migration?.exists &&
+    includesAll(
+      migration.content.toLowerCase(),
+      [
+        "enable row level security",
+        "prevent_athena_pre_build_gate_mutation",
+        "athena_build_lifecycle_transitions_require_pre_build_gate"
+      ]
+    ) &&
+    privilegeRepairContractVerified &&
+    databasePostVerified &&
+    functionalValidationVerified
+  );
+  updates.rls_policy_reviewed =
+    securityVerified
+      ? update(
+          "pass",
+          "RLS, exact service_role SELECT-only table access, no browser-role access, append-only evidence, security-definer RPCs, and the mandatory transition gate trigger are verified.",
+          "Automatic evidence requires the corrective privilege migration, its regression test, final live post-verification, and rollback-only functional security matrix.",
+          {
+            source:
+              "build_0085_migration_security_contract",
+            migration_sha256:
+              migration?.sha256 || null,
+            privilege_repair_migration_sha256:
+              privilegeRepairMigration
+                ?.sha256 || null,
+            privilege_repair_test_sha256:
+              privilegeRepairTest
+                ?.sha256 || null,
+            database_post_verification_sha256:
+              databasePostVerificationEvidence
+                ?.sha256 || null,
+            service_role_exact_select_only:
+              databaseSecurity
+                ?.service_role_exact_select_only_tables ??
+              null,
+            secret_values_recorded:
+              false
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0085 migration security contract could not be fully verified.",
+          "Required RLS, repaired grants, live post-verification, append-only, or transition-gate evidence is missing.",
+          {
+            source:
+              "build_0085_migration_security_contract",
+            migration_sha256:
+              migration?.sha256 || null
+          }
+        );
+
+  updates.core_pages_regression_checked =
+    sourceBuildVerified
+      ? update(
+          "pass",
+          "Core Athena OS routes and /start-build remained present in both successful Build 0085 production-build route maps.",
+          "Automatic evidence retained two clean production builds: the original gate source application and the privilege-repair source application.",
+          {
+            source:
+              "build_0085_consolidated_source_build_validation",
+            evidence_sha256:
+              sourceBuildEvidence?.sha256 ||
+              null,
+            routes:
+              sourceBuildRoutes,
+            production_builds_passed:
+              sourceBuildRecord
+                ?.production_builds_passed ??
+              null
+          }
+        )
+      : update(
+          "fail",
+          "The retained Build 0085 production-build route evidence is incomplete.",
+          "Both production builds and the required route map must be present before this regression check can pass.",
+          {
+            source:
+              "build_0085_consolidated_source_build_validation"
+          }
+        );
+
+  updates.terminal_build_clean =
+    sourceBuildVerified
+      ? update(
+          "pass",
+          "The corrected gate implementation and privilege-repair source both completed clean Next.js production builds and TypeScript validation.",
+          "Automatic evidence retained the exact package hashes, local evidence paths, and successful route maps without staging, committing, pushing, or applying database SQL from the installers.",
+          {
+            source:
+              "build_0085_consolidated_source_build_validation",
+            evidence_sha256:
+              sourceBuildEvidence?.sha256 ||
+              null,
+            initial_source_evidence_path:
+              sourceBuildRecord
+                ?.initial_source_evidence_path ??
+              null,
+            privilege_repair_source_evidence_path:
+              sourceBuildRecord
+                ?.privilege_repair_source_evidence_path ??
+              null
+          }
+        )
+      : update(
+          "fail",
+          "The retained Build 0085 production-build evidence could not be verified.",
+          "A clean production build for both source-application phases is required.",
+          {
+            source:
+              "build_0085_consolidated_source_build_validation"
+          }
+        );
+}
+
 async function persistAutomaticUpdates(input: {
   supabase: SupabaseClient;
   packet: CompletionPacket;
@@ -2211,6 +3054,15 @@ export async function applyAutomaticQaEvidence(
         generic.moduleRow || null,
       completionHours:
         generic.completionHours
+    });
+  } else if (
+    preBuildGateProfileApplies(packet)
+  ) {
+    await addPreBuildGateEvidence({
+      supabase,
+      packet,
+      repoRoot,
+      updates: generic.updates
     });
   } else {
     const genericPending: Record<

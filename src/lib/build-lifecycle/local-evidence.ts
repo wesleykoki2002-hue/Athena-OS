@@ -10,7 +10,7 @@ import type {
 
 const execFileAsync = promisify(execFile);
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-const GIT_HEAD_PATTERN = /^[0-9a-f]{40}$/;
+const GIT_OBJECT_PATTERN = /^[0-9a-f]{40}$/;
 
 function requiredEnvironment(name: string): string {
   const value = process.env[name]?.trim();
@@ -22,7 +22,7 @@ function requiredEnvironment(name: string): string {
   return value;
 }
 
-function sha256(value: Uint8Array): string {
+function sha256(value: Uint8Array | string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
@@ -64,7 +64,7 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence():
     "ATHENA_SUPABASE_PROJECT_REF",
   );
 
-  if (!GIT_HEAD_PATTERN.test(expectedRepositoryHead)) {
+  if (!GIT_OBJECT_PATTERN.test(expectedRepositoryHead)) {
     throw new Error("Configured canonical repository HEAD is invalid.");
   }
 
@@ -101,6 +101,14 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence():
     );
   }
 
+  const repositoryTree = (
+    await runGit(repositoryPath, ["rev-parse", "HEAD^{tree}"])
+  ).toLowerCase();
+
+  if (!GIT_OBJECT_PATTERN.test(repositoryTree)) {
+    throw new Error("Canonical repository tree identity is invalid.");
+  }
+
   const trackedDiff = await runGit(repositoryPath, [
     "diff",
     "--no-ext-diff",
@@ -130,6 +138,16 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence():
     );
   }
 
+  const trackedIndex = await runGit(repositoryPath, ["ls-files", "-s"]);
+
+  if (!trackedIndex) {
+    throw new Error("Canonical repository contains no tracked-file evidence.");
+  }
+
+  const repositoryEvidenceSha256 = sha256(
+    [repositoryHead, repositoryTree, trackedIndex].join("\n"),
+  );
+
   const handoffBytes = await readFile(handoffPath);
   const actualHandoffSha256 = sha256(handoffBytes);
 
@@ -152,6 +170,8 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence():
     handoffSha256: actualHandoffSha256,
     repositoryPath,
     repositoryHead,
+    repositoryTree,
+    repositoryEvidenceSha256,
     supabaseProjectRef,
     trackedDiffEmpty: true,
     stagedDiffEmpty: true,

@@ -14,30 +14,97 @@ export type BuildLifecycleAutomaticEvidence = {
   checks: BuildLifecycleAutomaticCheck[];
 };
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 export async function readBuildLifecycleAutomaticEvidence(
   expected: CanonicalBuildLifecycleResult,
 ): Promise<BuildLifecycleAutomaticEvidence> {
   const supabase = createAthenaCoreClient();
-  const [stateResult, transitionResult, openTimerResult] = await Promise.all([
-    supabase
-      .from("athena_build_lifecycle_state")
-      .select("*")
-      .eq("id", expected.state_id)
-      .single(),
-    supabase
-      .from("athena_build_lifecycle_transitions")
-      .select("*")
-      .eq("id", expected.transition_id)
-      .single(),
-    supabase
-      .from("athena_build_timer_sessions")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["active", "paused", "idle"]),
-  ]);
+  const [stateResult, transitionResult, exactTimerResult, gateResult] =
+    await Promise.all([
+      supabase
+        .from("athena_build_lifecycle_state")
+        .select("*")
+        .eq("id", expected.state_id)
+        .single(),
+      supabase
+        .from("athena_build_lifecycle_transitions")
+        .select("*")
+        .eq("id", expected.transition_id)
+        .single(),
+      supabase
+        .from("athena_build_timer_sessions")
+        .select("id, status, created_at")
+        .eq("project_key", expected.project_key)
+        .eq("module_key", expected.module_key)
+        .eq("build_session_title", expected.build_title),
+      supabase.rpc("athena_pre_build_gate_read_qa_evidence", {
+        p_evaluation_id: expected.gate_evaluation_id,
+      }),
+    ]);
 
   const state = stateResult.data as Record<string, unknown> | null;
   const transition =
     transitionResult.data as Record<string, unknown> | null;
+  const gate = asRecord(gateResult.data);
+  const evaluation = asRecord(gate?.evaluation);
+  const override = asRecord(gate?.override);
+  const candidateCount = Number(gate?.candidate_count ?? -1);
+  const gateIdentityMatches =
+    evaluation?.id === expected.gate_evaluation_id &&
+    evaluation?.operation_key === expected.operation_key &&
+    evaluation?.scope_hash === expected.gate_scope_hash &&
+    evaluation?.request_hash === expected.gate_request_hash &&
+    evaluation?.classification === expected.gate_classification &&
+    evaluation?.intake_id === expected.intake_id &&
+    evaluation?.preparation_package_id === expected.preparation_package_id &&
+    evaluation?.project_key === expected.project_key &&
+    evaluation?.module_key === expected.module_key &&
+    evaluation?.module_id === expected.module_id &&
+    evaluation?.repository_head === expected.repository_head &&
+    evaluation?.handoff_sha256 === expected.handoff_sha256;
+  const decisionAllowsStart =
+    expected.gate_decision === "pass"
+      ? evaluation?.decision === "pass" && override === null
+      : evaluation?.decision === "block" &&
+        Boolean(override) &&
+        override?.evaluation_id === expected.gate_evaluation_id &&
+        override?.operation_key === expected.operation_key &&
+        override?.scope_hash === expected.gate_scope_hash;
+  const transitionLinkedByOperation =
+    gate?.linked_transition_id === expected.transition_id;
+  const exactTimers = Array.isArray(exactTimerResult.data)
+    ? exactTimerResult.data.filter(
+        (timer): timer is {
+          id: string;
+          status: string;
+          created_at: string;
+        } =>
+          Boolean(timer) &&
+          typeof timer.id === "string" &&
+          typeof timer.status === "string" &&
+          typeof timer.created_at === "string",
+      )
+    : [];
+  const transitionCreatedAt =
+    typeof transition?.created_at === "string"
+      ? Date.parse(transition.created_at)
+      : Number.NaN;
+  const exactTimersAreLater =
+    exactTimers.length === 0 ||
+    (Number.isFinite(transitionCreatedAt) &&
+      exactTimers.every((timer) => {
+        const timerCreatedAt = Date.parse(timer.created_at);
+        return (
+          Number.isFinite(timerCreatedAt) &&
+          timerCreatedAt > transitionCreatedAt
+        );
+      }));
+
   const checks: BuildLifecycleAutomaticCheck[] = [
     {
       checkKey: "state_read_succeeded",
@@ -73,11 +140,82 @@ export async function readBuildLifecycleAutomaticEvidence(
       },
     },
     {
-      checkKey: "no_implicit_timer_start",
-      passed: !openTimerResult.error && openTimerResult.count === 0,
+      checkKey: "gate_evidence_read_succeeded",
+      passed: !gateResult.error && gate !== null && evaluation !== null,
+      evidence: { error: gateResult.error?.message || null },
+    },
+    {
+      checkKey: "gate_identity_matches",
+      passed: gateIdentityMatches,
       evidence: {
-        openTimerCount: openTimerResult.count,
-        error: openTimerResult.error?.message || null,
+        expectedEvaluationId: expected.gate_evaluation_id,
+        actualEvaluationId: evaluation?.id || null,
+        expectedScopeHash: expected.gate_scope_hash,
+        actualScopeHash: evaluation?.scope_hash || null,
+      },
+    },
+    {
+      checkKey: "gate_candidate_evidence_persisted",
+      passed:
+        Number.isInteger(candidateCount) &&
+        candidateCount >= 0 &&
+        candidateCount === expected.gate_candidate_count,
+      evidence: {
+        expectedCandidateCount: expected.gate_candidate_count,
+        actualCandidateCount: candidateCount,
+      },
+    },
+    {
+      checkKey: "gate_decision_authorized_start",
+      passed: decisionAllowsStart,
+      evidence: {
+        expectedDecision: expected.gate_decision,
+        persistedDecision: evaluation?.decision || null,
+        overrideId: override?.id || null,
+      },
+    },
+    {
+      checkKey: "historical_lifecycle_rpc_compatibility_preserved",
+      passed: gate?.old_rpc_service_role_execute === true,
+      evidence: {
+        oldRpcServiceRoleExecute:
+          gate?.old_rpc_service_role_execute ?? null,
+      },
+    },
+    {
+      checkKey: "database_transition_gate_enforced",
+      passed:
+        gate?.transition_gate_trigger_exists === true &&
+        transitionLinkedByOperation,
+      evidence: {
+        transitionGateTriggerExists:
+          gate?.transition_gate_trigger_exists ?? null,
+        linkedTransitionId:
+          gate?.linked_transition_id ?? null,
+        expectedTransitionId:
+          expected.transition_id,
+      },
+    },
+    {
+      checkKey: "gate_wrapper_service_role_executable",
+      passed: gate?.wrapper_service_role_execute === true,
+      evidence: {
+        wrapperServiceRoleExecute:
+          gate?.wrapper_service_role_execute ?? null,
+      },
+    },
+    {
+      checkKey: "no_implicit_timer_start",
+      passed: !exactTimerResult.error && exactTimersAreLater,
+      evidence: {
+        exactTimerCount: exactTimers.length,
+        exactTimers,
+        transitionCreatedAt:
+          typeof transition?.created_at === "string"
+            ? transition.created_at
+            : null,
+        allExactTimersCreatedAfterTransition: exactTimersAreLater,
+        error: exactTimerResult.error?.message || null,
       },
     },
     {
