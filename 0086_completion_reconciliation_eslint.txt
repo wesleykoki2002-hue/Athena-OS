@@ -1,0 +1,4 @@
+
+> athena-os@0.1.0 lint
+> eslint src/lib/build-timer/completion-hours.ts src/app/build-timer/actions.ts src/app/complete-feature/actions.ts src/app/complete-feature/page.tsx src/lib/qa/automatic-evidence.ts
+

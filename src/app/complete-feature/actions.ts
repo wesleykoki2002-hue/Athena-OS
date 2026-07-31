@@ -6,7 +6,6 @@ import {
   splitPacketLines,
   type CompletionPacket
 } from "@/lib/completion-packets";
-import { computeQaStatus } from "@/lib/qa-status";
 import { applyAutomaticQaEvidence } from "@/lib/qa/automatic-evidence";
 import {
   lookupCompletionHours,
@@ -32,16 +31,6 @@ type QaCheckRow = {
   warning_acknowledged_at: string | null;
 };
 
-type ManualHoursDetails = {
-  manual_hours_spent: number;
-  manual_hours_reason: string;
-  manual_hours_evidence: string;
-  manual_hours_acknowledged: true;
-  manual_hours_operator: string;
-  manual_hours_submitted_at: string;
-  timer_lookup_warning: string;
-};
-
 type ManualFallbackQaRow = {
   id: string;
   check_key: string;
@@ -56,16 +45,6 @@ type ManualFallbackQaRow = {
 function readText(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function readCheckbox(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  return (
-    value === "on" ||
-    value === "true" ||
-    value === "1"
-  );
 }
 
 function asMetadataRecord(value: unknown) {
@@ -83,14 +62,15 @@ function asMetadataRecord(value: unknown) {
 function completionHoursMetadataMatches(
   metadata: Record<string, unknown> | null,
   completionHours: CompletionHoursLookup,
-  hoursSpent: number,
-  manualHoursDetails: ManualHoursDetails | null
+  hoursSpent: number
 ) {
   const savedMetadata =
     asMetadataRecord(metadata);
 
   if (
     !savedMetadata ||
+    completionHours.source !==
+      "verified_timer" ||
     Number(
       savedMetadata.completion_hours
     ) !== hoursSpent
@@ -98,57 +78,70 @@ function completionHoursMetadataMatches(
     return false;
   }
 
-  if (
-    completionHours.source ===
-      "verified_timer"
-  ) {
-    return (
-      savedMetadata.hours_source ===
-        "verified_build_timer" &&
-      savedMetadata.timer_session_id ===
-        completionHours.timer_session.id &&
-      Number(
-        savedMetadata.timer_active_seconds
-      ) ===
-        completionHours.timer_session
-          .active_seconds &&
-      savedMetadata.manual_hours_fallback ===
-        null
-    );
-  }
-
-  const savedManualHours =
-    asMetadataRecord(
-      savedMetadata.manual_hours_fallback
-    );
-
-  if (
-    !manualHoursDetails ||
-    !savedManualHours
-  ) {
-    return false;
-  }
-
   return (
     savedMetadata.hours_source ===
-      "manual_fallback" &&
+      "verified_build_timer" &&
+    savedMetadata.timer_session_id ===
+      completionHours.timer_session.id &&
     Number(
-      savedManualHours.manual_hours_spent
+      savedMetadata.timer_active_seconds
     ) ===
-      manualHoursDetails.manual_hours_spent &&
-    savedManualHours.manual_hours_reason ===
-      manualHoursDetails.manual_hours_reason &&
-    savedManualHours.manual_hours_evidence ===
-      manualHoursDetails.manual_hours_evidence &&
-    savedManualHours.manual_hours_acknowledged ===
+      completionHours.timer_session
+        .active_seconds &&
+    savedMetadata.timer_started_at ===
+      completionHours.timer_session
+        .started_at &&
+    savedMetadata.timer_last_heartbeat_at ===
+      completionHours.timer_session
+        .last_heartbeat_at &&
+    savedMetadata.timer_stopped_at ===
+      completionHours.timer_session
+        .stopped_at &&
+    savedMetadata.timer_identity_verified ===
       true &&
-    savedManualHours.manual_hours_operator ===
-      manualHoursDetails.manual_hours_operator &&
-    savedManualHours.manual_hours_submitted_at ===
-      manualHoursDetails.manual_hours_submitted_at &&
-    savedManualHours.timer_lookup_warning ===
-      manualHoursDetails.timer_lookup_warning
+    savedMetadata.timer_heartbeat_verified ===
+      true &&
+    savedMetadata.manual_hours_fallback ===
+      null
   );
+}
+
+type CompletionReconciliationResult = {
+  verified?: boolean;
+  external_read_after_write_required?: boolean;
+  idempotent_replay?: boolean;
+  write_status?: string;
+  packet_id?: string;
+  qa_run_id?: string;
+  completion_event_id?: string;
+  build_log_id?: string;
+  preparation_package_id?: string;
+  timer_session_id?: string;
+  timer_active_seconds?: number;
+  hours_spent?: number;
+  success_message?: string | null;
+  verification_error?: string;
+};
+
+function readReconciliationResult(
+  value: unknown,
+  rpcName: string
+) {
+  const record = asMetadataRecord(value);
+
+  if (!record) {
+    throw new Error(
+      `${rpcName} returned an invalid response.`
+    );
+  }
+
+  return record as CompletionReconciliationResult;
+}
+
+function completionReconciliationOperationKey(
+  packetId: string
+) {
+  return `completion-reconciliation:${packetId}`;
 }
 
 function packetUrl(
@@ -637,13 +630,38 @@ export async function recordCtoUpdateFromCompletion(
   }
 
   if (initialPacket.status === "completed") {
-    redirect(
-      packetUrl(
-        initialPacket.id,
-        "success",
-        "This completion packet was already recorded."
-      )
+    const {
+      data: existingVerificationData,
+      error: existingVerificationError
+    } = await supabase.rpc(
+      "athena_read_feature_completion_reconciliation",
+      {
+        p_packet_id: initialPacket.id
+      }
     );
+
+    if (!existingVerificationError) {
+      const existingVerification =
+        readReconciliationResult(
+          existingVerificationData,
+          "athena_read_feature_completion_reconciliation"
+        );
+
+      if (
+        existingVerification.verified === true &&
+        typeof existingVerification.success_message ===
+          "string" &&
+        existingVerification.success_message.trim()
+      ) {
+        redirect(
+          packetUrl(
+            initialPacket.id,
+            "success",
+            existingVerification.success_message
+          )
+        );
+      }
+    }
   }
 
   if (initialPacket.status === "cancelled") {
@@ -698,178 +716,68 @@ export async function recordCtoUpdateFromCompletion(
         initialPacket.build_session_title
     });
 
-  const manualHoursRaw =
+  const zeroTimeReason =
     readText(
       formData,
-      "manual_hours_spent"
+      "zero_time_completion_reason"
     );
 
-  const manualHoursReason =
+  const zeroTimeEvidenceText =
     readText(
       formData,
-      "manual_hours_reason"
+      "zero_time_completion_evidence"
     );
-
-  const manualHoursEvidence =
-    readText(
-      formData,
-      "manual_hours_evidence"
-    );
-
-  const manualHoursOperator =
-    readText(
-      formData,
-      "manual_hours_operator"
-    );
-
-  const manualHoursAcknowledged =
-    readCheckbox(
-      formData,
-      "manual_hours_acknowledged"
-    );
-
-  let hoursSpent: number;
-
-  let completionHoursMetadata:
-    Record<string, unknown>;
-
-  let manualHoursDetails:
-    ManualHoursDetails | null = null;
 
   if (
-    completionHours.source ===
+    completionHours.source !==
       "verified_timer"
   ) {
-    hoursSpent =
-      completionHours.hours_spent;
-
-    completionHoursMetadata = {
-      ...completionHours.metadata,
-      manual_hours_fallback: null
-    };
-  } else {
-    if (!manualHoursRaw) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          `${completionHours.warning} Enter audited manual hours before recording.`
-        )
-      );
-    }
-
-    const parsedManualHours =
-      Number(manualHoursRaw);
-
-    if (
-      !Number.isFinite(
-        parsedManualHours
-      ) ||
-      parsedManualHours < 0
-    ) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "Manual hours must be a finite non-negative number."
-        )
-      );
-    }
-
-    const roundedManualHours =
-      Math.round(
-        parsedManualHours * 100
-      ) / 100;
-
-    if (
-      Math.abs(
-        parsedManualHours -
-          roundedManualHours
-      ) >
-      0.000001
-    ) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "Manual hours may contain at most two decimal places."
-        )
-      );
-    }
-
-    if (!manualHoursReason) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "A manual-hours reason is required."
-        )
-      );
-    }
-
-    if (!manualHoursEvidence) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "Manual-hours evidence is required."
-        )
-      );
-    }
-
-    if (!manualHoursOperator) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "The manual-hours operator acknowledgement name is required."
-        )
-      );
-    }
-
-    if (!manualHoursAcknowledged) {
-      redirect(
-        packetUrl(
-          initialPacket.id,
-          "error",
-          "The operator must acknowledge that manual hours require a visible QA warning."
-        )
-      );
-    }
-
-    const manualHoursSubmittedAt =
-      new Date().toISOString();
-
-    hoursSpent =
-      roundedManualHours;
-
-    manualHoursDetails = {
-      manual_hours_spent:
-        roundedManualHours,
-      manual_hours_reason:
-        manualHoursReason,
-      manual_hours_evidence:
-        manualHoursEvidence,
-      manual_hours_acknowledged:
-        true,
-      manual_hours_operator:
-        manualHoursOperator,
-      manual_hours_submitted_at:
-        manualHoursSubmittedAt,
-      timer_lookup_warning:
-        completionHours.warning
-    };
-
-    completionHoursMetadata = {
-      ...completionHours.metadata,
-      hours_source:
-        "manual_fallback",
-      completion_hours:
-        roundedManualHours,
-      manual_hours_fallback:
-        manualHoursDetails
-    };
+    redirect(
+      packetUrl(
+        initialPacket.id,
+        "error",
+        `${completionHours.warning} Build 0086 completion requires the exact stopped timer with verified activation and heartbeat evidence.`
+      )
+    );
   }
+
+  if (
+    completionHours.timer_session
+      .active_seconds === 0 &&
+    (
+      zeroTimeReason.length < 20 ||
+      !zeroTimeEvidenceText
+    )
+  ) {
+    redirect(
+      packetUrl(
+        initialPacket.id,
+        "error",
+        "Zero-time completion requires a reason of at least 20 characters and non-empty supporting evidence."
+      )
+    );
+  }
+
+  const hoursSpent =
+    completionHours.hours_spent;
+
+  const completionHoursMetadata = {
+    ...completionHours.metadata,
+    manual_hours_fallback: null,
+    zero_time_completion_reason:
+      completionHours.timer_session
+        .active_seconds === 0
+        ? zeroTimeReason
+        : null,
+    zero_time_completion_evidence:
+      completionHours.timer_session
+        .active_seconds === 0
+        ? {
+            operator_evidence:
+              zeroTimeEvidenceText
+          }
+        : null
+  };
 
   const { data: moduleRow, error: moduleError } =
     await readCanonicalModule(
@@ -952,8 +860,7 @@ export async function recordCtoUpdateFromCompletion(
     !completionHoursMetadataMatches(
       savedOperatorPacket.metadata,
       completionHours,
-      hoursSpent,
-      manualHoursDetails
+      hoursSpent
     )
   ) {
     redirect(
@@ -1011,189 +918,7 @@ export async function recordCtoUpdateFromCompletion(
     );
   }
 
-  if (manualHoursDetails) {
-    const manualWarningActualResult =
-      `Manual completion hours ${hoursSpent.toFixed(
-        2
-      )} were submitted because no valid stopped timer was available.`;
-
-    const manualWarningNotes = [
-      `Reason: ${manualHoursDetails.manual_hours_reason}`,
-      `Evidence: ${manualHoursDetails.manual_hours_evidence}`,
-      `Timer lookup: ${manualHoursDetails.timer_lookup_warning}`,
-      `Operator acknowledgement: ${manualHoursDetails.manual_hours_operator}`
-    ].join("\n");
-
-    const preserveAcknowledgement =
-      existingManualWarning?.status ===
-        "warning" &&
-      existingManualWarning.actual_result ===
-        manualWarningActualResult &&
-      existingManualWarning.notes ===
-        manualWarningNotes &&
-      Boolean(
-        existingManualWarning
-          .warning_acknowledged_at &&
-        existingManualWarning
-          .warning_acknowledged_by &&
-        existingManualWarning
-          .warning_acknowledgement_notes
-      );
-
-    const expectedAcknowledgedAt =
-      preserveAcknowledgement
-        ? existingManualWarning
-            ?.warning_acknowledged_at ||
-          null
-        : null;
-
-    const expectedAcknowledgedBy =
-      preserveAcknowledgement
-        ? existingManualWarning
-            ?.warning_acknowledged_by ||
-          null
-        : null;
-
-    const expectedAcknowledgementNotes =
-      preserveAcknowledgement
-        ? existingManualWarning
-            ?.warning_acknowledgement_notes ||
-          null
-        : null;
-
-    const manualWarningPayload = {
-      status: "warning",
-      actual_result:
-        manualWarningActualResult,
-      evidence: {
-        hours_source:
-          "manual_fallback",
-        manual_hours_spent:
-          manualHoursDetails
-            .manual_hours_spent,
-        manual_hours_reason:
-          manualHoursDetails
-            .manual_hours_reason,
-        manual_hours_evidence:
-          manualHoursDetails
-            .manual_hours_evidence,
-        manual_hours_operator:
-          manualHoursDetails
-            .manual_hours_operator,
-        manual_hours_submitted_at:
-          manualHoursDetails
-            .manual_hours_submitted_at,
-        timer_lookup_warning:
-          manualHoursDetails
-            .timer_lookup_warning,
-        completion_packet_id:
-          packet.id
-      },
-      notes:
-        manualWarningNotes,
-      warning_acknowledged_at:
-        expectedAcknowledgedAt,
-      warning_acknowledged_by:
-        expectedAcknowledgedBy,
-      warning_acknowledgement_notes:
-        expectedAcknowledgementNotes,
-      updated_at:
-        new Date().toISOString()
-    };
-
-    let savedManualWarning:
-      ManualFallbackQaRow | null = null;
-
-    let manualWarningWriteError:
-      { message: string } | null = null;
-
-    if (existingManualWarning) {
-      const result = await supabase
-        .from("athena_qa_check_results")
-        .update(
-          manualWarningPayload
-        )
-        .eq(
-          "id",
-          existingManualWarning.id
-        )
-        .eq(
-          "qa_run_id",
-          packet.qa_run_id
-        )
-        .select(
-          "id, check_key, status, actual_result, notes, warning_acknowledged_at, warning_acknowledged_by, warning_acknowledgement_notes"
-        )
-        .maybeSingle<ManualFallbackQaRow>();
-
-      savedManualWarning =
-        result.data || null;
-
-      manualWarningWriteError =
-        result.error;
-    } else {
-      const result = await supabase
-        .from("athena_qa_check_results")
-        .insert({
-          qa_run_id:
-            packet.qa_run_id,
-          check_key:
-            manualWarningCheckKey,
-          check_name:
-            "Manual completion hours fallback reviewed",
-          category:
-            "calculation",
-          severity:
-            "high",
-          expected_result:
-            "Manual completion hours are permitted only when no valid stopped timer exists and the reason, evidence, operator acknowledgement, and QA warning remain visible.",
-          ...manualWarningPayload
-        })
-        .select(
-          "id, check_key, status, actual_result, notes, warning_acknowledged_at, warning_acknowledged_by, warning_acknowledgement_notes"
-        )
-        .maybeSingle<ManualFallbackQaRow>();
-
-      savedManualWarning =
-        result.data || null;
-
-      manualWarningWriteError =
-        result.error;
-    }
-
-    if (
-      manualWarningWriteError ||
-      !savedManualWarning ||
-      savedManualWarning.check_key !==
-        manualWarningCheckKey ||
-      savedManualWarning.status !==
-        "warning" ||
-      savedManualWarning.actual_result !==
-        manualWarningActualResult ||
-      savedManualWarning.notes !==
-        manualWarningNotes ||
-      savedManualWarning
-        .warning_acknowledged_at !==
-        expectedAcknowledgedAt ||
-      savedManualWarning
-        .warning_acknowledged_by !==
-        expectedAcknowledgedBy ||
-      savedManualWarning
-        .warning_acknowledgement_notes !==
-        expectedAcknowledgementNotes
-    ) {
-      redirect(
-        packetUrl(
-          packet.id,
-          "error",
-          `Manual-hours QA warning could not be persisted and verified: ${
-            manualWarningWriteError?.message ||
-            "Saved values did not match."
-          }`
-        )
-      );
-    }
-  } else if (existingManualWarning) {
+  if (existingManualWarning) {
     const {
       data: disabledManualWarning,
       error: disableManualWarningError
@@ -1203,21 +928,19 @@ export async function recordCtoUpdateFromCompletion(
         status:
           "not_applicable",
         actual_result:
-          "A verified stopped timer supplied the completion hours. Manual fallback was not used.",
+          "Build 0086 requires a verified stopped timer. Manual completion-hours fallback was not used.",
         evidence: {
           hours_source:
             "verified_build_timer",
           timer_session_id:
-            completionHours.source ===
-              "verified_timer"
-              ? completionHours
-                  .timer_session.id
-              : null,
+            completionHours.timer_session.id,
           completion_packet_id:
-            packet.id
+            packet.id,
+          timer_heartbeat_verified:
+            true
         },
         notes:
-          "Any prior manual-hours fallback warning was disabled because canonical timer evidence is now available.",
+          "Any prior manual-hours fallback warning was disabled because canonical timer activation, heartbeat, and stopped-state evidence are now required.",
         warning_acknowledged_at:
           null,
         warning_acknowledged_by:
@@ -1418,52 +1141,28 @@ export async function recordCtoUpdateFromCompletion(
   let completionEventId =
     existingCompletionEvent?.id || null;
 
-  if (existingCompletionEvent?.cto_recorded) {
-    if (!packet.build_log_id) {
-      const { data: linkedBuildLog } = await supabase
-        .from("athena_build_logs")
-        .select("id")
-        .eq("product_key", packet.project_key)
-        .eq(
-          "session_title",
-          packet.build_session_title
-        )
-        .maybeSingle<{ id: string }>();
-
-      if (linkedBuildLog) {
-        const { data: recoveredPacket } = await supabase
-          .from("athena_feature_completion_packets")
-          .update({
-            qa_run_id: packet.qa_run_id,
-            completion_event_id:
-              existingCompletionEvent.id,
-            build_log_id: linkedBuildLog.id,
-            status: "completed"
-          })
-          .eq("id", packet.id)
-          .select("id, status")
-          .maybeSingle<{
-            id: string;
-            status: string;
-          }>();
-
-        if (recoveredPacket?.status === "completed") {
-          redirect(
-            packetUrl(
-              packet.id,
-              "success",
-              "Previously recorded completion was recovered and linked to the persistent packet."
-            )
-          );
-        }
-      }
-    }
+  if (
+    existingCompletionEvent &&
+    (
+      existingCompletionEvent.qa_run_id !==
+        packet.qa_run_id ||
+      existingCompletionEvent.module_key !==
+        packet.module_key ||
+      existingCompletionEvent.feature_name !==
+        packet.feature_name ||
+      existingCompletionEvent.route_path !==
+        packet.route_path
+    )
+  ) {
+    await markRetryReady(
+      "The existing completion event does not match the persistent packet identity."
+    );
 
     redirect(
       packetUrl(
         packet.id,
         "error",
-        "The completion event is already recorded, but the packet could not be fully recovered. Review its linked build log."
+        "The existing completion event does not match the persistent packet identity."
       )
     );
   }
@@ -1481,7 +1180,10 @@ export async function recordCtoUpdateFromCompletion(
     updated_at: new Date().toISOString()
   };
 
-  if (existingCompletionEvent) {
+  if (
+    existingCompletionEvent &&
+    !existingCompletionEvent.cto_recorded
+  ) {
     const { data, error } = await supabase
       .from("athena_feature_completion_events")
       .update(eventPayload)
@@ -1525,7 +1227,7 @@ export async function recordCtoUpdateFromCompletion(
     }
 
     completionEventId = data.id;
-  } else {
+  } else if (!existingCompletionEvent) {
     const { data, error } = await supabase
       .from("athena_feature_completion_events")
       .insert({
@@ -1589,11 +1291,16 @@ export async function recordCtoUpdateFromCompletion(
     );
   }
 
+  const expectedRecordingStatus =
+    packet.status === "completed"
+      ? "completed"
+      : "recording";
+
   const { data: recordingPacket, error: recordingError } =
     await supabase
       .from("athena_feature_completion_packets")
       .update({
-        status: "recording",
+        status: expectedRecordingStatus,
         completion_event_id: completionEventId
       })
       .eq("id", packet.id)
@@ -1609,7 +1316,8 @@ export async function recordCtoUpdateFromCompletion(
   if (
     recordingError ||
     !recordingPacket ||
-    recordingPacket.status !== "recording" ||
+    recordingPacket.status !==
+      expectedRecordingStatus ||
     recordingPacket.completion_event_id !==
       completionEventId
   ) {
@@ -1826,272 +1534,175 @@ export async function recordCtoUpdateFromCompletion(
     );
   }
 
-  const {
-    data: memoryCheck,
-    error: memoryCheckError
-  } = await supabase
-    .from("athena_qa_check_results")
-    .update({
-      status: "pass",
-      actual_result: `${packet.build_session_title} was recorded in Athena CTO automatically from the persistent completion packet.`,
-      notes:
-        "Automatically marked pass after the verified Athena CTO build log was saved or recovered.",
-      warning_acknowledged_at: null,
-      warning_acknowledged_by: null,
-      warning_acknowledgement_notes: null,
-      updated_at: new Date().toISOString()
-    })
-    .eq("qa_run_id", packet.qa_run_id)
-    .eq(
-      "check_key",
-      "athena_cto_memory_recorded"
-    )
-    .select("id, status, actual_result")
-    .maybeSingle<{
-      id: string;
-      status: string;
-      actual_result: string | null;
-    }>();
-
-  if (
-    memoryCheckError ||
-    !memoryCheck ||
-    memoryCheck.status !== "pass"
-  ) {
-    await markRetryReady(
-      memoryCheckError?.message ||
-        "Memory check update verification failed."
+  const reconciliationOperationKey =
+    completionReconciliationOperationKey(
+      packet.id
     );
 
-    redirect(
-      packetUrl(
-        packet.id,
-        "error",
-        `CTO update was recorded, but memory check verification failed: ${
-          memoryCheckError?.message ||
-          "No verified row was returned."
-        }`
-      )
-    );
-  }
-
-  const {
-    data: finalChecks,
-    error: finalChecksError
-  } = await supabase
-    .from("athena_qa_check_results")
-    .select(
-      "status, warning_acknowledged_at"
-    )
-    .eq("qa_run_id", packet.qa_run_id)
-    .returns<
-      {
-        status: string;
-        warning_acknowledged_at: string | null;
-      }[]
-    >();
-
-  if (finalChecksError || !finalChecks) {
-    await markRetryReady(
-      finalChecksError?.message ||
-        "Final QA checks could not be read."
-    );
-
-    redirect(
-      packetUrl(
-        packet.id,
-        "error",
-        `Final QA checks could not be verified: ${
-          finalChecksError?.message ||
-          "No rows were returned."
-        }`
-      )
-    );
-  }
-
-  const computedStatus =
-    computeQaStatus(finalChecks);
-
-  if (computedStatus !== "pass") {
-    await markRetryReady(
-      `Final QA status was ${computedStatus}, not pass.`
-    );
-
-    redirect(
-      packetUrl(
-        packet.id,
-        "error",
-        `Final QA status is ${computedStatus}. The packet remains retry-ready.`
-      )
-    );
-  }
-
-  const qaCompletedAt = new Date().toISOString();
-
-  const { data: savedQaRun, error: qaRunError } =
-    await supabase
-      .from("athena_qa_runs")
-      .update({
-        status: "pass",
-        completed_at: qaCompletedAt,
-        updated_at: qaCompletedAt
-      })
-      .eq("id", packet.qa_run_id)
-      .select("id, status, completed_at")
-      .maybeSingle<{
-        id: string;
-        status: string;
-        completed_at: string | null;
-      }>();
-
-  const savedQaCompletedAt =
-    savedQaRun?.completed_at
-      ? Date.parse(savedQaRun.completed_at)
-      : Number.NaN;
-
-  const expectedQaCompletedAt =
-    Date.parse(qaCompletedAt);
-
-  if (
-    qaRunError ||
-    !savedQaRun ||
-    savedQaRun.status !== "pass" ||
-    !Number.isFinite(savedQaCompletedAt) ||
-    savedQaCompletedAt !== expectedQaCompletedAt
-  ) {
-    await markRetryReady(
-      qaRunError?.message ||
-        "Final QA run update verification failed."
-    );
-
-    redirect(
-      packetUrl(
-        packet.id,
-        "error",
-        `Final QA run could not be verified: ${
-          qaRunError?.message ||
-          "Saved values did not match."
-        }`
-      )
-    );
-  }
-
-  const {
-    data: completedEvent,
-    error: completionEventError
-  } = await supabase
-    .from("athena_feature_completion_events")
-    .update({
-      status: "completed",
-      cto_recorded: true,
-      memory_check_closed: true,
-      notes:
-        "Completed through the persistent Feature Completion Command Center packet. CTO update recorded, verified, and memory QA check closed.",
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", completionEventId)
-    .select(
-      "id, status, cto_recorded, memory_check_closed, qa_run_id"
-    )
-    .maybeSingle<{
-      id: string;
-      status: string;
-      cto_recorded: boolean;
-      memory_check_closed: boolean;
-      qa_run_id: string | null;
-    }>();
-
-  if (
-    completionEventError ||
-    !completedEvent ||
-    completedEvent.status !== "completed" ||
-    completedEvent.cto_recorded !== true ||
-    completedEvent.memory_check_closed !== true ||
-    completedEvent.qa_run_id !== packet.qa_run_id
-  ) {
-    await markRetryReady(
-      completionEventError?.message ||
-        "Completion event final verification failed."
-    );
-
-    redirect(
-      packetUrl(
-        packet.id,
-        "error",
-        `Completion history could not be finalized and verified: ${
-          completionEventError?.message ||
-          "Saved values did not match."
-        }`
-      )
-    );
-  }
-
-  const { data: completedPacket, error: finalPacketError } =
-    await supabase
-      .from("athena_feature_completion_packets")
-      .update({
-        qa_run_id: packet.qa_run_id,
-        completion_event_id:
-          completedEvent.id,
-        build_log_id: verifiedBuildLog.id,
-        status: "completed",
-        estimated_remaining_hours_snapshot:
-          currentRemainingHours,
-        metadata: {
-          ...(packet.metadata || {}),
-          recording_verified: true,
-          recording_verified_at:
-            new Date().toISOString()
+  const reconciliationEvidence = {
+    route_path:
+      "/complete-feature",
+    action_source:
+      "athena_os_completion_workflow",
+    reconciliation_version:
+      "0086-v1",
+    completion_packet_id:
+      packet.id,
+    timer_session_id:
+      completionHours.timer_session.id,
+    timer_active_seconds:
+      completionHours.timer_session
+        .active_seconds,
+    timer_last_heartbeat_at:
+      completionHours.timer_session
+        .last_heartbeat_at,
+    completion_hours:
+      hoursSpent,
+    ...(completionHours.timer_session
+      .active_seconds === 0
+      ? {
+          zero_time_evidence: {
+            operator_evidence:
+              zeroTimeEvidenceText
+          }
         }
-      })
-      .eq("id", packet.id)
-      .select(
-        "id, status, qa_run_id, completion_event_id, build_log_id, completed_at, hours_spent, estimated_remaining_hours_snapshot"
-      )
-      .maybeSingle<{
-        id: string;
-        status: string;
-        qa_run_id: string | null;
-        completion_event_id: string | null;
-        build_log_id: string | null;
-        completed_at: string | null;
-        hours_spent: number | string | null;
-        estimated_remaining_hours_snapshot:
-          | number
-          | string
-          | null;
-      }>();
+      : {})
+  };
 
-  if (
-    finalPacketError ||
-    !completedPacket ||
-    completedPacket.status !== "completed" ||
-    completedPacket.qa_run_id !==
-      packet.qa_run_id ||
-    completedPacket.completion_event_id !==
-      completedEvent.id ||
-    completedPacket.build_log_id !==
-      verifiedBuildLog.id ||
-    !completedPacket.completed_at ||
-    Number(completedPacket.hours_spent) !==
-      hoursSpent ||
-    Number(
-      completedPacket.estimated_remaining_hours_snapshot
-    ) !== currentRemainingHours
-  ) {
+  const {
+    data: reconciliationWriteData,
+    error: reconciliationWriteError
+  } = await supabase.rpc(
+    "athena_reconcile_feature_completion",
+    {
+      p_packet_id: packet.id,
+      p_completion_event_id:
+        completionEventId,
+      p_build_log_id:
+        verifiedBuildLog.id,
+      p_operator_key:
+        completionHours.operator_key,
+      p_operation_key:
+        reconciliationOperationKey,
+      p_zero_time_reason:
+        completionHours.timer_session
+          .active_seconds === 0
+          ? zeroTimeReason
+          : null,
+      p_evidence:
+        reconciliationEvidence
+    }
+  );
+
+  if (reconciliationWriteError) {
     await markRetryReady(
-      finalPacketError?.message ||
-        "Final completion packet verification failed."
+      reconciliationWriteError.message
     );
 
     redirect(
       packetUrl(
         packet.id,
         "error",
-        `The build was recorded, but final packet verification failed: ${
-          finalPacketError?.message ||
-          "Saved values did not match."
-        }`
+        `Build 0086 transactional reconciliation failed: ${reconciliationWriteError.message}`
+      )
+    );
+  }
+
+  const reconciliationWrite =
+    readReconciliationResult(
+      reconciliationWriteData,
+      "athena_reconcile_feature_completion"
+    );
+
+  if (
+    reconciliationWrite.packet_id !==
+      packet.id ||
+    reconciliationWrite.qa_run_id !==
+      packet.qa_run_id ||
+    reconciliationWrite.completion_event_id !==
+      completionEventId ||
+    reconciliationWrite.build_log_id !==
+      verifiedBuildLog.id ||
+    reconciliationWrite.timer_session_id !==
+      completionHours.timer_session.id ||
+    reconciliationWrite
+      .external_read_after_write_required !==
+      true
+  ) {
+    await markRetryReady(
+      "The transactional reconciliation write returned mismatched identifiers."
+    );
+
+    redirect(
+      packetUrl(
+        packet.id,
+        "error",
+        "The transactional reconciliation write returned mismatched identifiers."
+      )
+    );
+  }
+
+  const {
+    data: reconciliationReadData,
+    error: reconciliationReadError
+  } = await supabase.rpc(
+    "athena_read_feature_completion_reconciliation",
+    {
+      p_packet_id: packet.id
+    }
+  );
+
+  if (reconciliationReadError) {
+    await markRetryReady(
+      reconciliationReadError.message
+    );
+
+    redirect(
+      packetUrl(
+        packet.id,
+        "error",
+        `Build 0086 read-after-write verification failed: ${reconciliationReadError.message}`
+      )
+    );
+  }
+
+  const reconciliationRead =
+    readReconciliationResult(
+      reconciliationReadData,
+      "athena_read_feature_completion_reconciliation"
+    );
+
+  const reconciliationSuccessMessage =
+    typeof reconciliationRead.success_message ===
+      "string"
+      ? reconciliationRead.success_message.trim()
+      : "";
+
+  if (
+    reconciliationRead.verified !== true ||
+    reconciliationRead.packet_id !==
+      packet.id ||
+    reconciliationRead.qa_run_id !==
+      packet.qa_run_id ||
+    reconciliationRead.completion_event_id !==
+      completionEventId ||
+    reconciliationRead.build_log_id !==
+      verifiedBuildLog.id ||
+    reconciliationRead.timer_session_id !==
+      completionHours.timer_session.id ||
+    !reconciliationSuccessMessage
+  ) {
+    await markRetryReady(
+      reconciliationRead.verification_error ||
+        "The committed completion reconciliation did not verify."
+    );
+
+    redirect(
+      packetUrl(
+        packet.id,
+        "error",
+        reconciliationRead.verification_error ||
+          "The committed completion reconciliation did not verify."
       )
     );
   }
@@ -2100,7 +1711,7 @@ export async function recordCtoUpdateFromCompletion(
     packetUrl(
       packet.id,
       "success",
-      "CTO update, QA closure, completion event, and persistent packet were recorded and verified."
+      reconciliationSuccessMessage
     )
   );
 }

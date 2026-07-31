@@ -22,6 +22,7 @@ export type CompletionTimerSession = {
   build_session_title: string;
   status: TimerStatus;
   started_at: string;
+  last_heartbeat_at: string | null;
   stopped_at: string | null;
   active_seconds: number;
   paused_seconds: number;
@@ -36,6 +37,7 @@ export type CompletionHoursLookup =
   | {
       source: "verified_timer";
       hours_spent: number;
+      operator_key: string;
       timer_session: CompletionTimerSession;
       warning: null;
       metadata: JsonRecord;
@@ -43,6 +45,7 @@ export type CompletionHoursLookup =
   | {
       source: "manual_fallback";
       hours_spent: null;
+      operator_key: string;
       timer_session: CompletionTimerSession | null;
       warning: string;
       metadata: JsonRecord;
@@ -185,6 +188,12 @@ function parseTimerSession(
       "started_at"
     );
 
+  const lastHeartbeatAt =
+    readNullableString(
+      record,
+      "last_heartbeat_at"
+    );
+
   const stoppedAt =
     readNullableString(
       record,
@@ -273,6 +282,8 @@ function parseTimerSession(
       buildSessionTitle,
     status,
     started_at: startedAt,
+    last_heartbeat_at:
+      lastHeartbeatAt,
     stopped_at: stoppedAt,
     active_seconds: activeSeconds,
     paused_seconds: pausedSeconds,
@@ -300,12 +311,14 @@ function roundCompletionHours(
 
 function manualFallback(
   warning: string,
+  operatorKey: string,
   timerSession:
     CompletionTimerSession | null
 ): CompletionHoursLookup {
   return {
     source: "manual_fallback",
     hours_spent: null,
+    operator_key: operatorKey,
     timer_session: timerSession,
     warning,
     metadata: {
@@ -319,7 +332,11 @@ function manualFallback(
         timerSession?.status || null,
       timer_lookup_warning: warning,
       timer_identity_verified:
-        Boolean(timerSession)
+        Boolean(timerSession),
+      timer_heartbeat_verified:
+        Boolean(
+          timerSession?.last_heartbeat_at
+        )
     }
   };
 }
@@ -382,6 +399,7 @@ export async function lookupCompletionHours(
   ) {
     return manualFallback(
       "No verified timer session exists for this exact project, module, build title, and signed operator.",
+      operatorSession.operator_key,
       null
     );
   }
@@ -391,7 +409,8 @@ export async function lookupCompletionHours(
 
   if (!timerSession) {
     return manualFallback(
-      "The timer lookup returned a session that could not be validated. Manual hours require operator reason, evidence, and QA warning.",
+      "The timer lookup returned a session that could not be validated.",
+      operatorSession.operator_key,
       null
     );
   }
@@ -415,7 +434,16 @@ export async function lookupCompletionHours(
     !timerSession.stopped_at
   ) {
     return manualFallback(
-      `The exact timer session is ${timerSession.status}. Stop the timer before completion, or use the audited manual-hours fallback.`,
+      `The exact timer session is ${timerSession.status}. Stop the timer before completion.`,
+      operatorSession.operator_key,
+      timerSession
+    );
+  }
+
+  if (!timerSession.last_heartbeat_at) {
+    return manualFallback(
+      "The exact stopped timer has no verified heartbeat evidence.",
+      operatorSession.operator_key,
       timerSession
     );
   }
@@ -434,6 +462,7 @@ export async function lookupCompletionHours(
   ) {
     return manualFallback(
       "The timer's verified hours do not match the canonical nearest-0.01-hour calculation from raw active seconds.",
+      operatorSession.operator_key,
       timerSession
     );
   }
@@ -441,6 +470,8 @@ export async function lookupCompletionHours(
   return {
     source: "verified_timer",
     hours_spent: roundedHours,
+    operator_key:
+      operatorSession.operator_key,
     timer_session: timerSession,
     warning: null,
     metadata: {
@@ -468,6 +499,10 @@ export async function lookupCompletionHours(
         timerSession.calculation_version,
       timer_started_at:
         timerSession.started_at,
+      timer_last_heartbeat_at:
+        timerSession.last_heartbeat_at,
+      timer_heartbeat_verified:
+        true,
       timer_stopped_at:
         timerSession.stopped_at,
       timer_updated_at:

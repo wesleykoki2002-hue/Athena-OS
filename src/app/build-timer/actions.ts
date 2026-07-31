@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import {
   readTimerOperatorSession
@@ -178,6 +178,59 @@ function readEvidence(
     operation,
     server_recorded_at: new Date().toISOString()
   };
+}
+
+function asJsonRecord(value: unknown) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  return value as JsonRecord;
+}
+
+function readRpcString(
+  record: JsonRecord,
+  key: string,
+  rpcName: string
+) {
+  const value = record[key];
+
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    throw new Error(
+      `${rpcName} returned an invalid ${key}.`
+    );
+  }
+
+  return value;
+}
+
+function hasSubmittedEvidence(value: unknown) {
+  const record = asJsonRecord(value);
+  return Boolean(
+    record &&
+    Object.keys(record).length > 0
+  );
+}
+
+function correctionReconciliationOperationKey(
+  packetId: string,
+  timerOperationKey: string
+) {
+  const digest = createHash("sha256")
+    .update(
+      `${packetId}:${timerOperationKey}`,
+      "utf8"
+    )
+    .digest("hex");
+
+  return `completion-correction:${digest}`;
 }
 
 function readRpcRecord(
@@ -503,6 +556,112 @@ export async function correctBuildTimerActiveSeconds(
 
     const supabase = createAthenaCoreClient();
 
+    const {
+      data: currentSessionData,
+      error: currentSessionError
+    } = await supabase.rpc(
+      "athena_build_timer_read_session",
+      {
+        p_session_id: sessionId,
+        p_operator_key:
+          operatorSession.operator_key
+      }
+    );
+
+    if (currentSessionError) {
+      return failure(
+        readRpcError(
+          "athena_build_timer_read_session",
+          currentSessionError
+        )
+      );
+    }
+
+    const currentSession = readRpcRecord(
+      currentSessionData,
+      "athena_build_timer_read_session"
+    );
+
+    const projectKey = readRpcString(
+      currentSession,
+      "project_key",
+      "athena_build_timer_read_session"
+    );
+
+    const moduleKey = readRpcString(
+      currentSession,
+      "module_key",
+      "athena_build_timer_read_session"
+    );
+
+    const buildSessionTitle = readRpcString(
+      currentSession,
+      "build_session_title",
+      "athena_build_timer_read_session"
+    );
+
+    const {
+      data: completedPacket,
+      error: packetLookupError
+    } = await supabase
+      .from("athena_feature_completion_packets")
+      .select(
+        "id, status, qa_run_id, completion_event_id, build_log_id"
+      )
+      .eq("project_key", projectKey)
+      .eq("module_key", moduleKey)
+      .eq(
+        "build_session_title",
+        buildSessionTitle
+      )
+      .eq("status", "completed")
+      .maybeSingle<{
+        id: string;
+        status: string;
+        qa_run_id: string | null;
+        completion_event_id: string | null;
+        build_log_id: string | null;
+      }>();
+
+    if (packetLookupError) {
+      return failure(
+        `Completed-packet lookup failed before timer correction: ${packetLookupError.message}`
+      );
+    }
+
+    if (
+      completedPacket &&
+      (
+        !completedPacket.qa_run_id ||
+        !completedPacket.completion_event_id ||
+        !completedPacket.build_log_id
+      )
+    ) {
+      return failure(
+        "The completed packet is missing canonical links. Reconcile completion before correcting its timer."
+      );
+    }
+
+    if (
+      completedPacket &&
+      input.activeSeconds === 0 &&
+      (
+        reason.length < 20 ||
+        !hasSubmittedEvidence(
+          input.evidence
+        )
+      )
+    ) {
+      return failure(
+        "Correcting a completed build to zero active seconds requires a reason of at least 20 characters and non-empty evidence."
+      );
+    }
+
+    const correctionEvidence = readEvidence(
+      input.evidence,
+      "manual_correction"
+    );
+
     const { data, error } = await supabase.rpc(
       "athena_build_timer_correct_active_seconds",
       {
@@ -511,10 +670,7 @@ export async function correctBuildTimerActiveSeconds(
         p_new_active_seconds: input.activeSeconds,
         p_reason: reason,
         p_operation_key: operationKey,
-        p_evidence: readEvidence(
-          input.evidence,
-          "manual_correction"
-        )
+        p_evidence: correctionEvidence
       }
     );
 
@@ -527,12 +683,132 @@ export async function correctBuildTimerActiveSeconds(
       );
     }
 
-    return success(
-      readRpcRecord(
-        data,
-        "athena_build_timer_correct_active_seconds"
-      )
+    const correctedSession = readRpcRecord(
+      data,
+      "athena_build_timer_correct_active_seconds"
     );
+
+    if (!completedPacket) {
+      return success(correctedSession);
+    }
+
+    const reconciliationOperationKey =
+      correctionReconciliationOperationKey(
+        completedPacket.id,
+        operationKey
+      );
+
+    const reconciliationEvidence = {
+      ...correctionEvidence,
+      action_source:
+        "athena_os_timer_correction_reconciliation",
+      completion_packet_id:
+        completedPacket.id,
+      timer_correction_operation_key:
+        operationKey,
+      timer_correction_reason:
+        reason,
+      ...(input.activeSeconds === 0
+        ? {
+            zero_time_evidence:
+              asJsonRecord(input.evidence)
+          }
+        : {})
+    };
+
+    const {
+      data: reconciliationData,
+      error: reconciliationError
+    } = await supabase.rpc(
+      "athena_reconcile_feature_completion",
+      {
+        p_packet_id:
+          completedPacket.id,
+        p_completion_event_id:
+          completedPacket.completion_event_id,
+        p_build_log_id:
+          completedPacket.build_log_id,
+        p_operator_key:
+          operatorSession.operator_key,
+        p_operation_key:
+          reconciliationOperationKey,
+        p_zero_time_reason:
+          input.activeSeconds === 0
+            ? reason
+            : null,
+        p_evidence:
+          reconciliationEvidence
+      }
+    );
+
+    if (reconciliationError) {
+      return failure(
+        `Timer correction was recorded, but completion synchronization failed: ${reconciliationError.message}. Rerun the same correction operation key to retry synchronization idempotently.`
+      );
+    }
+
+    const reconciliationWrite =
+      readRpcRecord(
+        reconciliationData,
+        "athena_reconcile_feature_completion"
+      );
+
+    if (
+      reconciliationWrite.packet_id !==
+        completedPacket.id ||
+      reconciliationWrite.timer_session_id !==
+        sessionId ||
+      reconciliationWrite
+        .external_read_after_write_required !==
+        true
+    ) {
+      return failure(
+        "Timer correction was recorded, but completion synchronization returned mismatched identifiers. Rerun the same correction operation key."
+      );
+    }
+
+    const {
+      data: verificationData,
+      error: verificationError
+    } = await supabase.rpc(
+      "athena_read_feature_completion_reconciliation",
+      {
+        p_packet_id:
+          completedPacket.id
+      }
+    );
+
+    if (verificationError) {
+      return failure(
+        `Timer correction was recorded, but completion read-after-write verification failed: ${verificationError.message}. Rerun the same correction operation key.`
+      );
+    }
+
+    const verification = readRpcRecord(
+      verificationData,
+      "athena_read_feature_completion_reconciliation"
+    );
+
+    if (
+      verification.verified !== true ||
+      verification.packet_id !==
+        completedPacket.id ||
+      verification.timer_session_id !==
+        sessionId ||
+      Number(
+        verification.timer_active_seconds
+      ) !== input.activeSeconds
+    ) {
+      return failure(
+        "Timer correction was recorded, but the synchronized completion records did not verify. Rerun the same correction operation key."
+      );
+    }
+
+    return success({
+      ...correctedSession,
+      completion_reconciliation:
+        verification
+    });
   } catch (error) {
     return failure(
       error instanceof Error

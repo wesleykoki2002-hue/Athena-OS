@@ -304,24 +304,21 @@ async function readRepoFiles(
   );
 }
 
+type KnownQaLogName =
+  | "0083_helper_ui_build.txt"
+  | "0083_helper_ui_eslint.txt"
+  | "0086_completion_reconciliation_build.txt"
+  | "0086_completion_reconciliation_eslint.txt";
+
 async function readKnownQaLog(
   repoRoot: string,
-  fileName:
-    | "0083_helper_ui_build.txt"
-    | "0083_helper_ui_eslint.txt"
+  fileName: KnownQaLogName
 ) {
   try {
-    const fullPath =
-      fileName ===
-      "0083_helper_ui_build.txt"
-        ? path.join(
-            repoRoot,
-            "0083_helper_ui_build.txt"
-          )
-        : path.join(
-            repoRoot,
-            "0083_helper_ui_eslint.txt"
-          );
+    const fullPath = path.join(
+      repoRoot,
+      fileName
+    );
 
     const content = await readFile(
       fullPath,
@@ -376,6 +373,18 @@ function preBuildGateProfileApplies(
     packet.module_key ===
       "cross-project-reuse-detector" &&
     packet.route_path === "/start-build"
+  );
+}
+
+function completionReconciliationProfileApplies(
+  packet: CompletionPacket
+) {
+  return (
+    packet.project_key === "athena-cto" &&
+    packet.module_key ===
+      "cross-project-reuse-detector" &&
+    packet.build_session_title ===
+      "0086 Build title: Automatic Completion Reconciliation and Timer Reliability"
   );
 }
 
@@ -516,7 +525,11 @@ async function buildGenericEvidence(input: {
       completionHours.hours_spent ===
         expectedHours &&
       completionHours.timer_session
-        .status === "stopped";
+        .status === "stopped" &&
+      Boolean(
+        completionHours.timer_session
+          .last_heartbeat_at
+      );
 
     updates.calculation_verified =
       calculationMatches
@@ -525,7 +538,7 @@ async function buildGenericEvidence(input: {
             `Stopped timer calculation verified: ${rawSeconds} raw active seconds = ${expectedHours.toFixed(
               2
             )} completion hours.`,
-            "Automatic evidence used the exact stopped timer matching the packet project, module, build title, and signed operator.",
+            "Automatic evidence used the exact stopped timer matching the packet project, module, build title, and signed operator, and verified recorded heartbeat evidence. A zero-active-seconds completion remains governed by the transactional completion step.",
             {
               source:
                 "verified_build_timer",
@@ -542,13 +555,20 @@ async function buildGenericEvidence(input: {
                 completionHours.hours_spent,
               calculation_version:
                 completionHours.timer_session
-                  .calculation_version
+                  .calculation_version,
+              timer_last_heartbeat_at:
+                completionHours.timer_session
+                  .last_heartbeat_at,
+              timer_heartbeat_verified:
+                true,
+              zero_time_requires_completion_evidence:
+                rawSeconds === 0
             }
           )
         : update(
             "fail",
-            "The authoritative timer calculation did not match the governed seconds-to-hours rule.",
-            "Automatic evidence found a stopped timer but its stored calculation did not match raw active seconds divided by 3600 and rounded to two decimals.",
+            "The authoritative timer, heartbeat, or governed seconds-to-hours evidence did not verify.",
+            "Automatic evidence requires exact stopped timer identity, a recorded heartbeat, and canonical rounding. Zero-time explanation is enforced transactionally during completion.",
             {
               source:
                 "verified_build_timer",
@@ -559,7 +579,10 @@ async function buildGenericEvidence(input: {
               expected_hours:
                 expectedHours,
               calculated_hours:
-                completionHours.hours_spent
+                completionHours.hours_spent,
+              timer_last_heartbeat_at:
+                completionHours.timer_session
+                  .last_heartbeat_at
             }
           );
   } else {
@@ -671,16 +694,25 @@ async function buildGenericEvidence(input: {
           }
         );
 
+  const completionReconciliationProfile =
+    completionReconciliationProfileApplies(
+      packet
+    );
+
   const buildLog =
     await readKnownQaLog(
       repoRoot,
-      "0083_helper_ui_build.txt"
+      completionReconciliationProfile
+        ? "0086_completion_reconciliation_build.txt"
+        : "0083_helper_ui_build.txt"
     );
 
   const eslintLog =
     await readKnownQaLog(
       repoRoot,
-      "0083_helper_ui_eslint.txt"
+      completionReconciliationProfile
+        ? "0086_completion_reconciliation_eslint.txt"
+        : "0083_helper_ui_eslint.txt"
     );
 
   const buildPassed = Boolean(
@@ -824,73 +856,79 @@ async function buildGenericEvidence(input: {
           }
         );
 
-  if (packet.build_log_id) {
+  if (
+    packet.status === "completed" &&
+    packet.build_log_id
+  ) {
     const {
-      data: buildLogRow,
-      error: buildLogError
-    } = await supabase
-      .from("athena_build_logs")
-      .select(
-        "id, product_key, session_title"
-      )
-      .eq("id", packet.build_log_id)
-      .eq(
-        "product_key",
-        packet.project_key
-      )
-      .eq(
-        "session_title",
-        packet.build_session_title
-      )
-      .maybeSingle<{
-        id: string;
-        product_key: string;
-        session_title: string;
-      }>();
+      data: reconciliationData,
+      error: reconciliationError
+    } = await supabase.rpc(
+      "athena_read_feature_completion_reconciliation",
+      {
+        p_packet_id: packet.id
+      }
+    );
+
+    const reconciliation =
+      asRecord(reconciliationData);
+
+    const reconciliationVerified =
+      !reconciliationError &&
+      reconciliation?.verified === true &&
+      reconciliation.packet_id ===
+        packet.id &&
+      reconciliation.build_log_id ===
+        packet.build_log_id &&
+      reconciliation.qa_run_id ===
+        packet.qa_run_id &&
+      reconciliation.completion_event_id ===
+        packet.completion_event_id;
 
     updates.athena_cto_memory_recorded =
-      !buildLogError &&
-      Boolean(buildLogRow)
+      reconciliationVerified
         ? update(
             "pass",
-            "Athena CTO build-log memory is linked and verified.",
-            "Automatic evidence read the exact build log linked to this persistent completion packet.",
+            "Athena CTO completion memory and all Build 0086 reconciliation links are freshly verified.",
+            "Automatic evidence called the service-role read-after-write verifier for packet, QA, event, build log, lifecycle transition, preparation package, timer, hours, and correction synchronization.",
             {
               source:
-                "athena_build_logs",
-              build_log_id:
-                buildLogRow?.id || null,
-              product_key:
-                buildLogRow?.product_key ||
-                null,
-              session_title:
-                buildLogRow?.session_title ||
-                null
+                "athena_read_feature_completion_reconciliation",
+              reconciliation
             }
           )
         : update(
             "fail",
-            "The packet contains a build-log id, but the linked Athena CTO build log could not be verified.",
-            buildLogError?.message ||
-              "The linked build-log row was not returned.",
+            "The completed packet did not pass Build 0086 reconciliation verification.",
+            reconciliationError?.message ||
+              (typeof reconciliation
+                ?.verification_error ===
+                "string"
+                ? reconciliation
+                    .verification_error
+                : "The reconciliation verifier returned false or mismatched links."),
             {
               source:
-                "athena_build_logs",
-              requested_build_log_id:
-                packet.build_log_id
+                "athena_read_feature_completion_reconciliation",
+              packet_id:
+                packet.id,
+              reconciliation
             }
           );
   } else {
     updates.athena_cto_memory_recorded =
       update(
         "pending",
-        "Athena CTO memory remains pending until the verified recording step creates and links the build log.",
-        "This is the only intentionally deferred QA check before CTO recording. The recording workflow marks it pass automatically after read-after-write verification.",
+        "Athena CTO memory remains pending until transactional completion reconciliation creates and verifies every canonical link.",
+        "This is the only intentionally deferred QA check before CTO recording. Build 0086 marks it pass inside the transactional reconciliation and then verifies it through a separate read.",
         {
           source:
             "completion_packet",
           packet_id: packet.id,
-          build_log_id: null
+          packet_status:
+            packet.status,
+          build_log_id:
+            packet.build_log_id
         }
       );
   }

@@ -66,6 +66,20 @@ type PacketListItem = {
   updated_at: string;
 };
 
+type CompletionReconciliationView = {
+  verified?: boolean;
+  packet_id?: string;
+  qa_run_id?: string;
+  completion_event_id?: string;
+  build_log_id?: string;
+  preparation_package_id?: string;
+  timer_session_id?: string;
+  timer_active_seconds?: number;
+  hours_spent?: number;
+  success_message?: string | null;
+  verification_error?: string;
+};
+
 function clean(value: string | undefined) {
   return value?.trim() || "";
 }
@@ -93,19 +107,6 @@ function metadataText(
     : "";
 }
 
-function metadataNumberText(
-  metadata: Record<string, unknown> | null,
-  key: string
-) {
-  const value = metadata?.[key];
-
-  return (
-    typeof value === "number" &&
-    Number.isFinite(value)
-  )
-    ? String(value)
-    : "";
-}
 function statusClass(status: string) {
   if (status === "completed") {
     return "border-green-200 bg-green-50 text-green-700";
@@ -201,6 +202,40 @@ export default async function CompleteFeaturePage({
     packetReadError = error?.message || "";
   }
 
+  let completionReconciliation:
+    CompletionReconciliationView | null = null;
+  let reconciliationReadError = "";
+
+  if (packet?.status === "completed") {
+    const {
+      data: reconciliationData,
+      error: reconciliationError
+    } = await supabase.rpc(
+      "athena_read_feature_completion_reconciliation",
+      {
+        p_packet_id: packet.id
+      }
+    );
+
+    if (reconciliationError) {
+      reconciliationReadError =
+        reconciliationError.message;
+    } else {
+      const record =
+        asMetadataRecord(
+          reconciliationData
+        );
+
+      if (record) {
+        completionReconciliation =
+          record as CompletionReconciliationView;
+      } else {
+        reconciliationReadError =
+          "Completion reconciliation returned an invalid verification response.";
+      }
+    }
+  }
+
   const projectKey =
     packet?.project_key || clean(query.project_key);
   const moduleKey =
@@ -254,47 +289,58 @@ export default async function CompleteFeaturePage({
     packet?.status === "cancelled";
   const identityLocked = Boolean(packet);
   const qaIdentityLocked = Boolean(packet?.qa_run_id);
+  const reconciliationVerified =
+    completionReconciliation
+      ?.verified === true;
+
+  const reconciliationFailure =
+    packet?.status === "completed" &&
+    !reconciliationVerified
+      ? completionReconciliation
+          ?.verification_error ||
+        reconciliationReadError ||
+        "The completed packet is not verified by Build 0086 reconciliation."
+      : "";
+
   const error =
-    clean(query.error) || packetReadError;
-  const success = clean(query.success);
+    packet?.status === "completed"
+      ? reconciliationFailure
+      : clean(query.error) || packetReadError;
+
+  const success =
+    packet?.status === "completed" &&
+    reconciliationVerified &&
+    typeof completionReconciliation
+      ?.success_message === "string"
+      ? completionReconciliation
+          .success_message
+      : packet?.status === "completed"
+        ? ""
+        : clean(query.success);
 
   const packetMetadata =
     asMetadataRecord(
       packet?.metadata
     );
 
-  const savedManualHoursFallback =
+  const savedZeroTimeReason =
+    metadataText(
+      packetMetadata,
+      "zero_time_completion_reason"
+    );
+
+  const savedZeroTimeEvidenceRecord =
     asMetadataRecord(
-      packetMetadata?.manual_hours_fallback
+      packetMetadata
+        ?.zero_time_completion_evidence
     );
 
-  const savedManualHoursSpent =
-    metadataNumberText(
-      savedManualHoursFallback,
-      "manual_hours_spent"
-    );
-
-  const savedManualHoursReason =
+  const savedZeroTimeEvidence =
     metadataText(
-      savedManualHoursFallback,
-      "manual_hours_reason"
+      savedZeroTimeEvidenceRecord,
+      "operator_evidence"
     );
 
-  const savedManualHoursEvidence =
-    metadataText(
-      savedManualHoursFallback,
-      "manual_hours_evidence"
-    );
-
-  const savedManualHoursOperator =
-    metadataText(
-      savedManualHoursFallback,
-      "manual_hours_operator"
-    );
-
-  const savedManualHoursAcknowledged =
-    savedManualHoursFallback
-      ?.manual_hours_acknowledged === true;
   return (
     <main className="min-h-screen bg-[#f5f1ea] px-6 py-8 text-[#171717]">
       <section className="mx-auto max-w-7xl">
@@ -866,106 +912,56 @@ export default async function CompleteFeaturePage({
 
                   <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
                     <p className="font-medium">
-                      Canonical timer hours
+                      Canonical timer required
                     </p>
                     <p className="mt-2 leading-6">
-                      Athena first resolves hours server-side from the exact stopped timer matching the packet project, module, build session title, and signed operator.
+                      Build 0086 resolves hours server-side from the exact stopped timer matching the packet project, module, build title, and signed operator. Verified start and heartbeat events are mandatory.
                     </p>
                     <p className="mt-2 text-xs leading-5 text-blue-700">
-                      When a valid stopped timer exists, it remains authoritative and all manual-hours fields below are ignored.
+                      Manual completion-hours fallback is no longer accepted. Append-only timer corrections are synchronized automatically after completion.
                     </p>
                   </div>
 
                   <details
-                    open={Boolean(savedManualHoursFallback)}
+                    open={Boolean(
+                      savedZeroTimeReason ||
+                      savedZeroTimeEvidence
+                    )}
                     className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900"
                   >
                     <summary className="cursor-pointer font-semibold">
-                      Audited manual-hours fallback
+                      Zero-time completion evidence
                     </summary>
 
                     <p className="mt-3 leading-6 text-yellow-900/80">
-                      Use this only when Athena cannot find a valid stopped timer for the exact packet identity. Manual hours require a reason, evidence, operator acknowledgement, and a visible QA warning.
+                      Complete these fields only when the verified stopped timer contains exactly zero active seconds. The reason must contain at least 20 characters and the supporting evidence cannot be empty.
                     </p>
-
-                    {savedManualHoursFallback ? (
-                      <p className="mt-3 rounded-xl border border-yellow-200 bg-white px-3 py-2 text-xs leading-5 text-yellow-800">
-                        Previously submitted manual fallback evidence was loaded from the saved completion packet.
-                      </p>
-                    ) : null}
 
                     <div className="mt-4 grid gap-4">
                       <label className="block">
                         <span className="mb-2 block text-sm font-medium">
-                          Manual hours spent
-                        </span>
-                        <input
-                          type="number"
-                          name="manual_hours_spent"
-                          min="0"
-                          step="0.01"
-                          defaultValue={savedManualHoursSpent}
-                          placeholder="0.00"
-                          className="w-full rounded-2xl border border-yellow-200 bg-white px-4 py-3 outline-none focus:border-yellow-500"
-                        />
-                        <span className="mt-2 block text-xs leading-5 text-yellow-800/75">
-                          Required only when no valid stopped timer exists. Maximum two decimal places.
-                        </span>
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-2 block text-sm font-medium">
-                          Manual-hours reason
+                          Zero-time reason
                         </span>
                         <textarea
-                          name="manual_hours_reason"
+                          name="zero_time_completion_reason"
                           rows={3}
-                          defaultValue={savedManualHoursReason}
-                          placeholder="Explain why canonical timer evidence is unavailable."
+                          defaultValue={savedZeroTimeReason}
+                          placeholder="Explain why the verified timer legitimately contains zero active seconds."
                           className="w-full rounded-2xl border border-yellow-200 bg-white px-4 py-3 outline-none focus:border-yellow-500"
                         />
                       </label>
 
                       <label className="block">
                         <span className="mb-2 block text-sm font-medium">
-                          Manual-hours evidence
+                          Zero-time supporting evidence
                         </span>
                         <textarea
-                          name="manual_hours_evidence"
+                          name="zero_time_completion_evidence"
                           rows={4}
-                          defaultValue={savedManualHoursEvidence}
-                          placeholder="Provide terminal logs, timestamps, task records, commits, screenshots, or other verifiable evidence."
+                          defaultValue={savedZeroTimeEvidence}
+                          placeholder="Provide timestamps, operation records, correction evidence, logs, or another verifiable explanation."
                           className="w-full rounded-2xl border border-yellow-200 bg-white px-4 py-3 outline-none focus:border-yellow-500"
                         />
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-2 block text-sm font-medium">
-                          Operator acknowledgement name
-                        </span>
-                        <input
-                          name="manual_hours_operator"
-                          defaultValue={savedManualHoursOperator}
-                          placeholder="Operator or reviewer name"
-                          className="w-full rounded-2xl border border-yellow-200 bg-white px-4 py-3 outline-none focus:border-yellow-500"
-                        />
-                      </label>
-
-                      <label className="flex items-start gap-3 rounded-2xl border border-yellow-200 bg-white p-4">
-                        <input
-                          type="checkbox"
-                          name="manual_hours_acknowledged"
-                          defaultChecked={savedManualHoursAcknowledged}
-                          className="mt-1 h-4 w-4"
-                        />
-                        <span>
-                          <span className="block font-semibold">
-                            I acknowledge the manual-hours governance warning
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-yellow-800/75">
-                            I understand that manual hours create or update a visible QA warning. Completion remains blocked until that warning has an explicit reviewer, acknowledgement note, and acknowledgement timestamp.
-                          </span>
-                        </span>
                       </label>
                     </div>
                   </details>
@@ -1011,20 +1007,33 @@ export default async function CompleteFeaturePage({
                   {packet.build_log_id || "Not linked"}
                 </p>
                 <p>
+                  <strong>Preparation package:</strong>{" "}
+                  {completionReconciliation
+                    ?.preparation_package_id ||
+                    "Not verified"}
+                </p>
+                <p>
+                  <strong>Timer session:</strong>{" "}
+                  {completionReconciliation
+                    ?.timer_session_id ||
+                    "Not verified"}
+                </p>
+                <p>
                   <strong>Completed at:</strong>{" "}
                   {packet.completed_at || "Not completed"}
                 </p>
               </div>
 
-              {packet.status === "completed" ? (
+              {packet.status === "completed" &&
+              reconciliationVerified ? (
                 <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
                   <CheckCircle2 className="mb-2 h-5 w-5" />
-                  Packet is read-only because all required records were linked and verified.
+                  Packet is read-only because the packet, QA run, completion event, build log, preparation package, lifecycle identity, and timer evidence were freshly reconciled and verified.
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
                   <ShieldAlert className="mb-2 h-5 w-5" />
-                  Completion remains open until QA, build log, completion event, and packet links verify.
+                  Completion remains open until QA, build log, completion event, preparation package, lifecycle identity, timer activation, heartbeat, hours, and packet links verify.
                 </div>
               )}
             </article>
