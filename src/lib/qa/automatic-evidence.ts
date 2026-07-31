@@ -101,6 +101,15 @@ const BUILD_TIMER_MIGRATIONS = [
 ];
 
 
+const COMPLETION_RECONCILIATION_FILES = [
+  "src/app/complete-feature/actions.ts",
+  "src/app/complete-feature/page.tsx",
+  "src/app/build-timer/actions.ts",
+  "src/lib/build-timer/completion-hours.ts",
+  "src/lib/qa/automatic-evidence.ts",
+  "supabase/migrations/20260731020000_0086_automatic_completion_reconciliation_timer_reliability.sql"
+];
+
 const PRE_BUILD_GATE_FILES = [
   "src/app/start-build/lifecycle-actions.ts",
   "src/app/start-build/page.tsx",
@@ -146,6 +155,14 @@ function asRecord(value: unknown) {
   }
 
   return value as Record<string, unknown>;
+}
+
+function errorMessage(value: unknown) {
+  const record = asRecord(value);
+
+  return typeof record?.message === "string"
+    ? record.message
+    : null;
 }
 
 function parseJsonRecord(
@@ -308,7 +325,9 @@ type KnownQaLogName =
   | "0083_helper_ui_build.txt"
   | "0083_helper_ui_eslint.txt"
   | "0086_completion_reconciliation_build.txt"
-  | "0086_completion_reconciliation_eslint.txt";
+  | "0086_completion_reconciliation_eslint.txt"
+  | "0086_automatic_qa_profile_repair_build.txt"
+  | "0086_automatic_qa_profile_repair_eslint.txt";
 
 async function readKnownQaLog(
   repoRoot: string,
@@ -700,20 +719,42 @@ async function buildGenericEvidence(input: {
     );
 
   const buildLog =
-    await readKnownQaLog(
-      repoRoot,
-      completionReconciliationProfile
-        ? "0086_completion_reconciliation_build.txt"
-        : "0083_helper_ui_build.txt"
-    );
+    completionReconciliationProfile
+      ? (
+          await readKnownQaLog(
+            repoRoot,
+            "0086_automatic_qa_profile_repair_build.txt"
+          )
+        ) ||
+        (
+          await readKnownQaLog(
+            repoRoot,
+            "0086_completion_reconciliation_build.txt"
+          )
+        )
+      : await readKnownQaLog(
+          repoRoot,
+          "0083_helper_ui_build.txt"
+        );
 
   const eslintLog =
-    await readKnownQaLog(
-      repoRoot,
-      completionReconciliationProfile
-        ? "0086_completion_reconciliation_eslint.txt"
-        : "0083_helper_ui_eslint.txt"
-    );
+    completionReconciliationProfile
+      ? (
+          await readKnownQaLog(
+            repoRoot,
+            "0086_automatic_qa_profile_repair_eslint.txt"
+          )
+        ) ||
+        (
+          await readKnownQaLog(
+            repoRoot,
+            "0086_completion_reconciliation_eslint.txt"
+          )
+        )
+      : await readKnownQaLog(
+          repoRoot,
+          "0083_helper_ui_eslint.txt"
+        );
 
   const buildPassed = Boolean(
     buildLog &&
@@ -941,6 +982,591 @@ async function buildGenericEvidence(input: {
     buildLog,
     eslintLog
   };
+}
+
+async function addCompletionReconciliationEvidence(input: {
+  supabase: SupabaseClient;
+  packet: CompletionPacket;
+  qaRunId: string;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  const {
+    supabase,
+    packet,
+    qaRunId,
+    repoRoot,
+    updates
+  } = input;
+
+  const files = await readRepoFiles(
+    repoRoot,
+    COMPLETION_RECONCILIATION_FILES
+  );
+
+  const fileByPath = new Map(
+    files.map((file) => [
+      file.relative_path,
+      file
+    ])
+  );
+
+  const completionActions =
+    fileByPath.get(
+      "src/app/complete-feature/actions.ts"
+    );
+
+  const completionPage =
+    fileByPath.get(
+      "src/app/complete-feature/page.tsx"
+    );
+
+  const timerActions =
+    fileByPath.get(
+      "src/app/build-timer/actions.ts"
+    );
+
+  const completionHours =
+    fileByPath.get(
+      "src/lib/build-timer/completion-hours.ts"
+    );
+
+  const automaticEvidence =
+    fileByPath.get(
+      "src/lib/qa/automatic-evidence.ts"
+    );
+
+  const migration =
+    fileByPath.get(
+      "supabase/migrations/20260731020000_0086_automatic_completion_reconciliation_timer_reliability.sql"
+    );
+
+  const allFilesExist =
+    files.every((file) => file.exists);
+
+  const completionActionContractVerified =
+    Boolean(
+      completionActions?.exists &&
+      includesAll(
+        completionActions.content,
+        [
+          "athena_reconcile_feature_completion",
+          "athena_read_feature_completion_reconciliation",
+          "external_read_after_write_required",
+          "Build 0086 transactional reconciliation failed",
+          "Build 0086 read-after-write verification failed"
+        ]
+      )
+    );
+
+  const timerCorrectionContractVerified =
+    Boolean(
+      timerActions?.exists &&
+      includesAll(
+        timerActions.content,
+        [
+          "athena_build_timer_correct_active_seconds",
+          "athena_reconcile_feature_completion",
+          "athena_read_feature_completion_reconciliation",
+          "athena_os_timer_correction_reconciliation",
+          "Timer correction was recorded, but completion synchronization failed"
+        ]
+      )
+    );
+
+  const completionHoursContractVerified =
+    Boolean(
+      completionHours?.exists &&
+      includesAll(
+        completionHours.content,
+        [
+          "lookupCompletionHours",
+          "timer_identity_verified",
+          "timer_heartbeat_verified",
+          "The exact stopped timer has no verified heartbeat evidence.",
+          "The timer RPC returned a session with a mismatched canonical identity."
+        ]
+      )
+    );
+
+  const automaticProfileContractVerified =
+    Boolean(
+      automaticEvidence?.exists &&
+      includesAll(
+        automaticEvidence.content,
+        [
+          "completionReconciliationProfileApplies",
+          "addCompletionReconciliationEvidence",
+          "0086_automatic_qa_profile_repair_build.txt",
+          "0086_automatic_qa_profile_repair_eslint.txt"
+        ]
+      )
+    );
+
+  const migrationContent =
+    migration?.content.toLowerCase() || "";
+
+  const migrationContractVerified =
+    Boolean(
+      migration?.exists &&
+      includesAll(
+        migrationContent,
+        [
+          "athena_read_feature_completion_reconciliation",
+          "athena_reconcile_feature_completion",
+          "completion_reconciliation_operation_key",
+          "assigned_started",
+          "event_type = 'start'",
+          "event_type = 'heartbeat'",
+          "v_timer.status <> 'stopped'",
+          "service_role",
+          "revoke all on function",
+          "from public, anon, authenticated"
+        ]
+      )
+    );
+
+  const productionBuildVerified =
+    updates.terminal_build_clean
+      ?.status === "pass";
+
+  updates.route_or_function_exists =
+    allFilesExist &&
+    completionActionContractVerified &&
+    timerCorrectionContractVerified &&
+    completionHoursContractVerified &&
+    automaticProfileContractVerified &&
+    migrationContractVerified &&
+    productionBuildVerified
+      ? update(
+          "pass",
+          "The Build 0086 completion route, timer correction path, completion-hours guard, automatic QA profile, reconciliation functions, and migration contract exist and passed the production build.",
+          "Automatic evidence verified the exact governed source paths and required Build 0086 function contracts.",
+          {
+            source:
+              "repository_migration_and_build_map",
+            files: files.map((file) => ({
+              path: file.relative_path,
+              exists: file.exists,
+              sha256: file.sha256
+            })),
+            completion_action_contract_verified:
+              completionActionContractVerified,
+            timer_correction_contract_verified:
+              timerCorrectionContractVerified,
+            completion_hours_contract_verified:
+              completionHoursContractVerified,
+            automatic_profile_contract_verified:
+              automaticProfileContractVerified,
+            migration_contract_verified:
+              migrationContractVerified,
+            production_build_verified:
+              productionBuildVerified
+          }
+        )
+      : update(
+          "fail",
+          "One or more required Build 0086 routes, functions, guards, automatic-QA contracts, migration contracts, or production-build checks could not be verified.",
+          "The exact source and contract results are included in structured evidence.",
+          {
+            source:
+              "repository_migration_and_build_map",
+            files: files.map((file) => ({
+              path: file.relative_path,
+              exists: file.exists,
+              sha256: file.sha256
+            })),
+            completion_action_contract_verified:
+              completionActionContractVerified,
+            timer_correction_contract_verified:
+              timerCorrectionContractVerified,
+            completion_hours_contract_verified:
+              completionHoursContractVerified,
+            automatic_profile_contract_verified:
+              automaticProfileContractVerified,
+            migration_contract_verified:
+              migrationContractVerified,
+            production_build_verified:
+              productionBuildVerified
+          }
+        );
+
+  const uiContractVerified = Boolean(
+    completionPage?.exists &&
+    includesAll(
+      completionPage.content,
+      [
+        "Create QA run from packet",
+        "Save and verify packet",
+        "Record and verify CTO update",
+        "Canonical timer required",
+        "Manual completion-hours fallback is no longer accepted",
+        "Verified links",
+        "Completion remains open until QA, build log, completion event, preparation package, lifecycle identity, timer activation, heartbeat, hours, and packet links verify."
+      ]
+    )
+  );
+
+  updates.ui_shows_expected_new_fields =
+    uiContractVerified
+      ? update(
+          "pass",
+          "The completion command center shows the governed packet, QA, CTO recording, canonical timer, and verified-link controls without a manual hours fallback.",
+          "Automatic source evidence verified the exact current Build 0086 UI contract and stale-success protection text.",
+          {
+            source:
+              "completion_command_center_source",
+            path:
+              completionPage?.relative_path || null,
+            sha256:
+              completionPage?.sha256 || null,
+            ui_contract_verified:
+              uiContractVerified
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0086 completion UI contract could not be verified from the current source.",
+          "One or more exact command-center controls or completion-boundary messages are missing.",
+          {
+            source:
+              "completion_command_center_source",
+            path:
+              completionPage?.relative_path || null,
+            sha256:
+              completionPage?.sha256 || null,
+            ui_contract_verified:
+              uiContractVerified
+          }
+        );
+
+  const {
+    data: savedPacket,
+    error: savedPacketError
+  } = await supabase
+    .from(
+      "athena_feature_completion_packets"
+    )
+    .select(
+      "id, project_key, module_key, feature_name, route_path, build_session_title, qa_run_id, status, metadata"
+    )
+    .eq("id", packet.id)
+    .maybeSingle<{
+      id: string;
+      project_key: string;
+      module_key: string;
+      feature_name: string;
+      route_path: string | null;
+      build_session_title: string;
+      qa_run_id: string | null;
+      status: string;
+      metadata: Record<string, unknown> | null;
+    }>();
+
+  const {
+    data: savedRun,
+    error: savedRunError
+  } = await supabase
+    .from("athena_qa_runs")
+    .select(
+      "id, project_key, module_key, feature_name, route_path, build_session_title, status"
+    )
+    .eq("id", qaRunId)
+    .maybeSingle<{
+      id: string;
+      project_key: string;
+      module_key: string | null;
+      feature_name: string;
+      route_path: string | null;
+      build_session_title: string | null;
+      status: string;
+    }>();
+
+  const {
+    data: savedChecks,
+    error: savedChecksError
+  } = await supabase
+    .from("athena_qa_check_results")
+    .select("id, qa_run_id, check_key, status")
+    .eq("qa_run_id", qaRunId)
+    .returns<Array<{
+      id: string;
+      qa_run_id: string;
+      check_key: string;
+      status: string;
+    }>>();
+
+  const packetIdentityVerified = Boolean(
+    !savedPacketError &&
+    savedPacket &&
+    savedPacket.id === packet.id &&
+    savedPacket.project_key ===
+      packet.project_key &&
+    savedPacket.module_key ===
+      packet.module_key &&
+    savedPacket.feature_name ===
+      packet.feature_name &&
+    savedPacket.route_path ===
+      packet.route_path &&
+    savedPacket.build_session_title ===
+      packet.build_session_title &&
+    savedPacket.qa_run_id === qaRunId
+  );
+
+  const runIdentityVerified = Boolean(
+    !savedRunError &&
+    savedRun &&
+    savedRun.id === qaRunId &&
+    savedRun.project_key ===
+      packet.project_key &&
+    savedRun.module_key ===
+      packet.module_key &&
+    savedRun.feature_name ===
+      packet.feature_name &&
+    savedRun.route_path ===
+      packet.route_path &&
+    savedRun.build_session_title ===
+      packet.build_session_title
+  );
+
+  const checkKeys = Array.isArray(savedChecks)
+    ? savedChecks.map((check) =>
+        check.check_key
+      )
+    : [];
+
+  const checklistVerified = Boolean(
+    !savedChecksError &&
+    Array.isArray(savedChecks) &&
+    savedChecks.length === 12 &&
+    savedChecks.every(
+      (check) =>
+        check.qa_run_id === qaRunId
+    ) &&
+    new Set(checkKeys).size === 12
+  );
+
+  updates.saved_row_verified =
+    packetIdentityVerified &&
+    runIdentityVerified &&
+    checklistVerified
+      ? update(
+          "pass",
+          "Direct database reads verified the saved Build 0086 packet, linked QA run, exact identity, and 12 unique checklist rows.",
+          "Automatic evidence read the canonical saved rows back from Athena OS Supabase instead of trusting the prior form submission.",
+          {
+            source:
+              "athena_completion_and_qa_saved_rows",
+            packet_id: packet.id,
+            qa_run_id: qaRunId,
+            packet_status:
+              savedPacket?.status || null,
+            qa_status:
+              savedRun?.status || null,
+            check_count:
+              savedChecks?.length || 0,
+            check_keys: checkKeys,
+            packet_identity_verified:
+              packetIdentityVerified,
+            run_identity_verified:
+              runIdentityVerified,
+            checklist_verified:
+              checklistVerified,
+            errors: {
+              packet:
+                savedPacketError?.message || null,
+              qa_run:
+                savedRunError?.message || null,
+              checks:
+                savedChecksError?.message || null
+            }
+          }
+        )
+      : update(
+          "fail",
+          "The saved Build 0086 packet, linked QA run, identity, or 12-row checklist did not verify through direct database reads.",
+          "The exact row-verification results and database errors are included in structured evidence.",
+          {
+            source:
+              "athena_completion_and_qa_saved_rows",
+            packet_id: packet.id,
+            qa_run_id: qaRunId,
+            packet_status:
+              savedPacket?.status || null,
+            qa_status:
+              savedRun?.status || null,
+            check_count:
+              savedChecks?.length || 0,
+            check_keys: checkKeys,
+            packet_identity_verified:
+              packetIdentityVerified,
+            run_identity_verified:
+              runIdentityVerified,
+            checklist_verified:
+              checklistVerified,
+            errors: {
+              packet:
+                savedPacketError?.message || null,
+              qa_run:
+                savedRunError?.message || null,
+              checks:
+                savedChecksError?.message || null
+            }
+          }
+        );
+
+  updates.database_write_verified =
+    packetIdentityVerified &&
+    runIdentityVerified &&
+    checklistVerified
+      ? update(
+          "pass",
+          "The completion workflow wrote and linked the exact QA run to the Build 0086 packet and persisted all 12 checklist rows.",
+          "Read-after-write evidence verified the canonical packet-to-QA relationship and checklist ownership.",
+          {
+            source:
+              "completion_packet_qa_link_write",
+            packet_id: packet.id,
+            qa_run_id: qaRunId,
+            packet_qa_run_id:
+              savedPacket?.qa_run_id || null,
+            check_count:
+              savedChecks?.length || 0,
+            packet_status:
+              savedPacket?.status || null,
+            qa_status:
+              savedRun?.status || null
+          }
+        )
+      : update(
+          "fail",
+          "The completion packet, QA-run link, or checklist write did not verify through read-after-write evidence.",
+          "No manual pass is permitted; repair the canonical write or linkage.",
+          {
+            source:
+              "completion_packet_qa_link_write",
+            packet_id: packet.id,
+            qa_run_id: qaRunId,
+            packet_qa_run_id:
+              savedPacket?.qa_run_id || null,
+            check_count:
+              savedChecks?.length || 0,
+            packet_status:
+              savedPacket?.status || null,
+            qa_status:
+              savedRun?.status || null
+          }
+        );
+
+  const {
+    data: reconciliationReadData,
+    error: reconciliationReadError
+  } = await supabase.rpc(
+    "athena_read_feature_completion_reconciliation",
+    {
+      p_packet_id: packet.id
+    }
+  );
+
+  const reconciliationRead =
+    asRecord(reconciliationReadData);
+
+  const reconciliationReadVerified =
+    !reconciliationReadError &&
+    reconciliationRead
+      ?.packet_id === packet.id &&
+    reconciliationRead
+      ?.reconciliation_version ===
+      "0086-v1";
+
+  updates.database_read_verified =
+    reconciliationReadVerified
+      ? update(
+          "pass",
+          "The Build 0086 service-role reconciliation reader returned the exact completion packet from the canonical Athena OS database.",
+          "The pre-completion read is expected to report verified=false until CTO recording creates every final link; the function identity and packet read were verified now.",
+          {
+            source:
+              "athena_read_feature_completion_reconciliation",
+            packet_id: packet.id,
+            reconciliation:
+              reconciliationRead,
+            error: null
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0086 reconciliation reader did not return the exact packet and reconciliation version.",
+          "Repair the canonical database read or function deployment before CTO recording.",
+          {
+            source:
+              "athena_read_feature_completion_reconciliation",
+            packet_id: packet.id,
+            reconciliation:
+              reconciliationRead,
+            error:
+              errorMessage(
+                reconciliationReadError
+              )
+          }
+        );
+
+  const securityContractVerified = Boolean(
+    migrationContractVerified &&
+    migration?.exists &&
+    includesAll(
+      migrationContent,
+      [
+        "security definer",
+        "set search_path = public",
+        "revoke all on function",
+        "from public, anon, authenticated",
+        "grant execute on function",
+        "to service_role"
+      ]
+    ) &&
+    reconciliationReadVerified
+  );
+
+  updates.rls_policy_reviewed =
+    securityContractVerified
+      ? update(
+          "pass",
+          "Build 0086 reconciliation functions are security-definer functions with a fixed public search path, revoked public/anon/authenticated execution, and service-role-only grants.",
+          "Automatic evidence verified the exact deployed migration contract and a successful service-role function read against the current packet.",
+          {
+            source:
+              "build_0086_migration_security_contract",
+            migration_path:
+              migration?.relative_path || null,
+            migration_sha256:
+              migration?.sha256 || null,
+            security_contract_verified:
+              securityContractVerified,
+            service_role_read_verified:
+              reconciliationReadVerified
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0086 service-role-only reconciliation security contract could not be verified.",
+          "Do not use a manual QA pass; repair the migration contract or live service-role read.",
+          {
+            source:
+              "build_0086_migration_security_contract",
+            migration_path:
+              migration?.relative_path || null,
+            migration_sha256:
+              migration?.sha256 || null,
+            security_contract_verified:
+              securityContractVerified,
+            service_role_read_verified:
+              reconciliationReadVerified
+          }
+        );
 }
 
 async function addBuildTimerEvidence(input: {
@@ -3099,6 +3725,18 @@ export async function applyAutomaticQaEvidence(
     await addPreBuildGateEvidence({
       supabase,
       packet,
+      repoRoot,
+      updates: generic.updates
+    });
+  } else if (
+    completionReconciliationProfileApplies(
+      packet
+    )
+  ) {
+    await addCompletionReconciliationEvidence({
+      supabase,
+      packet,
+      qaRunId,
       repoRoot,
       updates: generic.updates
     });

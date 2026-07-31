@@ -1,0 +1,6 @@
+Command: C:\WINDOWS\system32\cmd.exe /d /s /c npm run lint -- src/lib/qa/automatic-evidence.ts
+Exit code: 0
+
+> athena-os@0.1.0 lint
+> eslint src/lib/qa/automatic-evidence.ts
+
