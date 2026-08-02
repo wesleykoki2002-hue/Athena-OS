@@ -1,0 +1,61 @@
+
+> athena-os@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+笨・Compiled successfully in 2.8s
+  Running TypeScript ...
+  Finished TypeScript in 4.7s ...
+  Collecting page data using 23 workers ...
+  Generating static pages using 23 workers (0/26) ...
+  Generating static pages using 23 workers (6/26) 
+  Generating static pages using 23 workers (12/26) 
+  Generating static pages using 23 workers (19/26) 
+笨・Generating static pages using 23 workers (26/26) in 397ms
+  Finalizing page optimization ...
+
+Route (app)
+笏・笳・/
+笏・笳・/_not-found
+笏・ﾆ・/api/build-timer/helper-heartbeat
+笏・ﾆ・/build-timer
+笏・ﾆ・/complete-feature
+笏・ﾆ・/completion-history
+笏・笳・/database-changes
+笏・ﾆ・/database-changes/[changeKey]/edit
+笏・ﾆ・/database-changes/new
+笏・笳・/database-map
+笏・ﾆ・/intake
+笏・笳・/internal-mvp-audit
+笏・笳・/logs
+笏・ﾆ・/next
+笏・ﾆ・/operator-login
+笏・ﾆ・/operator-logout
+笏・笳・/operator-workflow
+笏・ﾆ・/projects/[projectKey]
+笏・ﾆ・/projects/[projectKey]/edit
+笏・ﾆ・/projects/[projectKey]/modules
+笏・ﾆ・/projects/[projectKey]/modules/new
+笏・笳・/qa
+笏・ﾆ・/qa-prefill-preview
+笏・笳・/qa-prefill-templates
+笏・ﾆ・/qa-prefill-templates/[featureType]/edit
+笏・ﾆ・/qa-prefill-templates/new
+笏・ﾆ・/qa/[runId]
+笏・ﾆ・/qa/new
+笏・笳・/reusable
+笏・ﾆ・/reusable/[componentKey]
+笏・ﾆ・/reusable/[componentKey]/edit
+笏・笳・/sql-queries
+笏・ﾆ・/start-build
+笏・ﾆ・/update
+
+
+ﾆ・Proxy (Middleware)
+
+笳・ (Static)   prerendered as static content
+ﾆ・ (Dynamic)  server-rendered on demand
+

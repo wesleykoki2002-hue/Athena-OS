@@ -327,7 +327,9 @@ type KnownQaLogName =
   | "0086_completion_reconciliation_build.txt"
   | "0086_completion_reconciliation_eslint.txt"
   | "0086_automatic_qa_profile_repair_build.txt"
-  | "0086_automatic_qa_profile_repair_eslint.txt";
+  | "0086_automatic_qa_profile_repair_eslint.txt"
+  | "0087_automatic_qa_profile_repair_build.txt"
+  | "0087_automatic_qa_profile_repair_eslint.txt";
 
 async function readKnownQaLog(
   repoRoot: string,
@@ -404,6 +406,18 @@ function completionReconciliationProfileApplies(
       "cross-project-reuse-detector" &&
     packet.build_session_title ===
       "0086 Build title: Automatic Completion Reconciliation and Timer Reliability"
+  );
+}
+
+function canonicalAutomaticQaEvidenceProfileApplies(
+  packet: CompletionPacket
+) {
+  return (
+    packet.project_key === "athena-cto" &&
+    packet.module_key ===
+      "cross-project-reuse-detector" &&
+    packet.build_session_title ===
+      "0087 Build title: Canonical Automatic-QA Evidence Dependency and Repository Reproducibility Repair"
   );
 }
 
@@ -718,43 +732,58 @@ async function buildGenericEvidence(input: {
       packet
     );
 
+  const canonicalAutomaticQaEvidenceProfile =
+    canonicalAutomaticQaEvidenceProfileApplies(
+      packet
+    );
+
   const buildLog =
-    completionReconciliationProfile
-      ? (
-          await readKnownQaLog(
-            repoRoot,
-            "0086_automatic_qa_profile_repair_build.txt"
-          )
-        ) ||
-        (
-          await readKnownQaLog(
-            repoRoot,
-            "0086_completion_reconciliation_build.txt"
-          )
-        )
-      : await readKnownQaLog(
+    canonicalAutomaticQaEvidenceProfile
+      ? await readKnownQaLog(
           repoRoot,
-          "0083_helper_ui_build.txt"
-        );
+          "0087_automatic_qa_profile_repair_build.txt"
+        )
+      : completionReconciliationProfile
+        ? (
+            await readKnownQaLog(
+              repoRoot,
+              "0086_automatic_qa_profile_repair_build.txt"
+            )
+          ) ||
+          (
+            await readKnownQaLog(
+              repoRoot,
+              "0086_completion_reconciliation_build.txt"
+            )
+          )
+        : await readKnownQaLog(
+            repoRoot,
+            "0083_helper_ui_build.txt"
+          );
 
   const eslintLog =
-    completionReconciliationProfile
-      ? (
-          await readKnownQaLog(
-            repoRoot,
-            "0086_automatic_qa_profile_repair_eslint.txt"
-          )
-        ) ||
-        (
-          await readKnownQaLog(
-            repoRoot,
-            "0086_completion_reconciliation_eslint.txt"
-          )
-        )
-      : await readKnownQaLog(
+    canonicalAutomaticQaEvidenceProfile
+      ? await readKnownQaLog(
           repoRoot,
-          "0083_helper_ui_eslint.txt"
-        );
+          "0087_automatic_qa_profile_repair_eslint.txt"
+        )
+      : completionReconciliationProfile
+        ? (
+            await readKnownQaLog(
+              repoRoot,
+              "0086_automatic_qa_profile_repair_eslint.txt"
+            )
+          ) ||
+          (
+            await readKnownQaLog(
+              repoRoot,
+              "0086_completion_reconciliation_eslint.txt"
+            )
+          )
+        : await readKnownQaLog(
+            repoRoot,
+            "0083_helper_ui_eslint.txt"
+          );
 
   const buildPassed = Boolean(
     buildLog &&
@@ -781,7 +810,7 @@ async function buildGenericEvidence(input: {
       ? update(
           "pass",
           "Targeted ESLint and the Next.js production build completed successfully.",
-          "Automatic evidence read the standardized local QA logs produced during Build 0083 verification.",
+          "Automatic evidence read the profile-selected standardized local QA logs and verified both the production build and ESLint evidence.",
           {
             source:
               "standardized_local_qa_logs",
@@ -1565,6 +1594,419 @@ async function addCompletionReconciliationEvidence(input: {
               securityContractVerified,
             service_role_read_verified:
               reconciliationReadVerified
+          }
+        );
+}
+
+async function addCanonicalAutomaticQaEvidenceDependencyEvidence(input: {
+  supabase: SupabaseClient;
+  packet: CompletionPacket;
+  qaRunId: string;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  await addCompletionReconciliationEvidence(
+    input
+  );
+
+  const {
+    packet,
+    repoRoot,
+    updates
+  } = input;
+
+  const governedPaths = [
+    "src/lib/qa/automatic-evidence.ts",
+    "src/app/complete-feature/page.tsx",
+    "supabase/tests/evidence/20260730_0085_database_post_verification.json",
+    "supabase/tests/evidence/20260730_0085_functional_validation.json",
+    "supabase/tests/evidence/20260730_0085_source_build_validation.json"
+  ];
+
+  const governedFiles =
+    await readRepoFiles(
+      repoRoot,
+      governedPaths
+    );
+
+  const fileByPath = new Map(
+    governedFiles.map((file) => [
+      file.relative_path,
+      file
+    ])
+  );
+
+  const automaticEvidence =
+    fileByPath.get(
+      "src/lib/qa/automatic-evidence.ts"
+    );
+
+  const completionPage =
+    fileByPath.get(
+      "src/app/complete-feature/page.tsx"
+    );
+
+  const helperBuild =
+    await readKnownQaLog(
+      repoRoot,
+      "0083_helper_ui_build.txt"
+    );
+
+  const helperEslint =
+    await readKnownQaLog(
+      repoRoot,
+      "0083_helper_ui_eslint.txt"
+    );
+
+  const repairBuild =
+    await readKnownQaLog(
+      repoRoot,
+      "0087_automatic_qa_profile_repair_build.txt"
+    );
+
+  const repairEslint =
+    await readKnownQaLog(
+      repoRoot,
+      "0087_automatic_qa_profile_repair_eslint.txt"
+    );
+
+  let attributesContent = "";
+
+  try {
+    attributesContent = await readFile(
+      path.join(repoRoot, ".gitattributes"),
+      "utf8"
+    );
+  } catch {
+    attributesContent = "";
+  }
+
+  const expectedHashes = new Map<
+    string,
+    string
+  >([
+    [
+      "0083_helper_ui_build.txt",
+      "4eb0b1579b8056d205b7047060c3739754b1b2f92dcb86112e65e82b7e1ba347"
+    ],
+    [
+      "0083_helper_ui_eslint.txt",
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    [
+      "supabase/tests/evidence/20260730_0085_database_post_verification.json",
+      "95c27a56ae6c549ffd38d15ca45c2bc669f6f6568fd4fa9e5d7944ea094a747d"
+    ],
+    [
+      "supabase/tests/evidence/20260730_0085_functional_validation.json",
+      "8ccfb84856f36106827a184fb46921df232d54df51dbab87e0a9e8ec66e55d8f"
+    ],
+    [
+      "supabase/tests/evidence/20260730_0085_source_build_validation.json",
+      "38cda268c5d73400eded6b27ddb7579db5927d8dbdb311de715f408c9cd85a50"
+    ]
+  ]);
+
+  const actualHashes = new Map<
+    string,
+    string | null
+  >([
+    [
+      "0083_helper_ui_build.txt",
+      helperBuild?.sha256 || null
+    ],
+    [
+      "0083_helper_ui_eslint.txt",
+      helperEslint?.sha256 || null
+    ],
+    ...governedFiles
+      .filter((file) =>
+        expectedHashes.has(
+          file.relative_path
+        )
+      )
+      .map((file) => [
+        file.relative_path,
+        file.sha256
+      ] as [string, string | null])
+  ]);
+
+  const exactHashResults =
+    Array.from(
+      expectedHashes.entries()
+    ).map(
+      ([relativePath, expectedSha256]) => {
+        const actualSha256 =
+          actualHashes.get(relativePath) ||
+          null;
+
+        return {
+          relative_path: relativePath,
+          expected_sha256: expectedSha256,
+          actual_sha256: actualSha256,
+          exact_match:
+            actualSha256 ===
+            expectedSha256
+        };
+      }
+    );
+
+  const exactHashesVerified =
+    exactHashResults.every(
+      (result) => result.exact_match
+    );
+
+  const attributesVerified =
+    includesAll(
+      attributesContent,
+      [
+        "0083_helper_ui_build.txt -text",
+        "0083_helper_ui_eslint.txt -text",
+        "supabase/tests/evidence/20260730_0085_database_post_verification.json -text",
+        "supabase/tests/evidence/20260730_0085_functional_validation.json -text",
+        "supabase/tests/evidence/20260730_0085_source_build_validation.json -text"
+      ]
+    );
+
+  const expectedChangedFiles = [
+    ".gitattributes",
+    "0083_helper_ui_build.txt",
+    "0083_helper_ui_eslint.txt",
+    "0087_automatic_qa_profile_repair_build.txt",
+    "0087_automatic_qa_profile_repair_eslint.txt",
+    "src/lib/qa/automatic-evidence.ts",
+    "supabase/tests/evidence/20260730_0085_database_post_verification.json",
+    "supabase/tests/evidence/20260730_0085_functional_validation.json",
+    "supabase/tests/evidence/20260730_0085_source_build_validation.json"
+  ];
+
+  const actualChangedFiles =
+    packet.files_changed || [];
+
+  const changedFilesVerified =
+    JSON.stringify(
+      [...actualChangedFiles].sort()
+    ) ===
+    JSON.stringify(
+      [...expectedChangedFiles].sort()
+    );
+
+  const profileContractVerified =
+    Boolean(
+      automaticEvidence?.exists &&
+      includesAll(
+        automaticEvidence.content,
+        [
+          "canonicalAutomaticQaEvidenceProfileApplies",
+          "addCanonicalAutomaticQaEvidenceDependencyEvidence",
+          "0087 Build title: Canonical Automatic-QA Evidence Dependency and Repository Reproducibility Repair",
+          "0087_automatic_qa_profile_repair_build.txt",
+          "0087_automatic_qa_profile_repair_eslint.txt"
+        ]
+      )
+    );
+
+  const repairBuildVerified =
+    Boolean(
+      repairBuild &&
+      repairBuild.content.includes(
+        "Compiled successfully"
+      ) &&
+      repairBuild.content.includes(
+        "Finished TypeScript"
+      )
+    );
+
+  const repairEslintVerified =
+    Boolean(
+      repairEslint &&
+      (
+        repairEslint.content.trim() ===
+          "" ||
+        !/\berror\b/i.test(
+          repairEslint.content
+        )
+      )
+    );
+
+  const validationLogsVerified =
+    repairBuildVerified &&
+    repairEslintVerified &&
+    updates.terminal_build_clean
+      ?.status === "pass";
+
+  const repositoryRepairVerified =
+    governedFiles.every(
+      (file) => file.exists
+    ) &&
+    exactHashesVerified &&
+    attributesVerified &&
+    changedFilesVerified &&
+    profileContractVerified &&
+    validationLogsVerified;
+
+  updates.route_or_function_exists =
+    repositoryRepairVerified
+      ? update(
+          "pass",
+          "Build 0087 verified the canonical automatic-QA profile, five exact evidence dependencies, exact-byte Git attributes, and current validation logs.",
+          "Automatic evidence verified repository paths, approved SHA-256 values, profile dispatch, packet file scope, ESLint, and the production build.",
+          {
+            source:
+              "build_0087_repository_reproducibility_profile",
+            exact_hash_results:
+              exactHashResults,
+            attributes_verified:
+              attributesVerified,
+            changed_files_verified:
+              changedFilesVerified,
+            expected_changed_files:
+              expectedChangedFiles,
+            profile_contract_verified:
+              profileContractVerified,
+            validation_logs_verified:
+              validationLogsVerified,
+            repair_build_sha256:
+              repairBuild?.sha256 || null,
+            repair_eslint_sha256:
+              repairEslint?.sha256 || null
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0087 profile, exact evidence dependencies, byte-preservation rules, validation logs, or declared file scope did not verify.",
+          "Do not manually pass this check. Repair the exact failed repository evidence shown in the structured result.",
+          {
+            source:
+              "build_0087_repository_reproducibility_profile",
+            exact_hash_results:
+              exactHashResults,
+            attributes_verified:
+              attributesVerified,
+            changed_files_verified:
+              changedFilesVerified,
+            actual_changed_files:
+              actualChangedFiles,
+            profile_contract_verified:
+              profileContractVerified,
+            validation_logs_verified:
+              validationLogsVerified
+          }
+        );
+
+  const completionUiVerified =
+    Boolean(
+      completionPage?.exists &&
+      includesAll(
+        completionPage.content,
+        [
+          "Create QA run from packet",
+          "Prefill and reset QA evidence",
+          "Verified links",
+          "Completion remains open until QA, build log, completion event, preparation package, lifecycle identity, timer activation, heartbeat, hours, and packet links verify."
+        ]
+      )
+    );
+
+  updates.ui_shows_expected_new_fields =
+    completionUiVerified
+      ? update(
+          "pass",
+          "Build 0087 required no new UI fields; the completion command center still exposes packet-linked QA refresh, verified links, and the fail-closed completion boundary.",
+          "Automatic source evidence verified the UI controls used to execute and refresh the repaired profile.",
+          {
+            source:
+              "completion_command_center_source",
+            path:
+              completionPage?.relative_path || null,
+            sha256:
+              completionPage?.sha256 || null,
+            repository_only_repair:
+              true,
+            completion_ui_verified:
+              completionUiVerified
+          }
+        )
+      : update(
+          "fail",
+          "The existing completion-command-center UI contract required to execute Build 0087 QA could not be verified.",
+          "One or more packet-linked QA or verified-link controls are missing from the current source.",
+          {
+            source:
+              "completion_command_center_source",
+            path:
+              completionPage?.relative_path || null,
+            sha256:
+              completionPage?.sha256 || null,
+            completion_ui_verified:
+              completionUiVerified
+          }
+        );
+
+  const securityText =
+    (packet.security_notes || [])
+      .join("\n")
+      .toLowerCase();
+
+  const forbiddenChangedPath =
+    actualChangedFiles.some(
+      (relativePath) =>
+        relativePath.startsWith(
+          "supabase/migrations/"
+        ) ||
+        relativePath.includes(".env") ||
+        relativePath.includes("secret")
+    );
+
+  const securityReviewVerified =
+    repositoryRepairVerified &&
+    (packet.database_changes || [])
+      .length === 0 &&
+    !forbiddenChangedPath &&
+    securityText.includes(
+      "no secrets were committed"
+    ) &&
+    securityText.includes(
+      "no migration or deployment was performed"
+    );
+
+  updates.rls_policy_reviewed =
+    securityReviewVerified
+      ? update(
+          "pass",
+          "Build 0087 changed no database schema, RLS policy, migration, deployment, environment file, or secret-bearing path; all canonical evidence bytes matched their approved hashes.",
+          "Automatic evidence verified the repository-only scope and the packet's explicit security boundary.",
+          {
+            source:
+              "build_0087_repository_security_scope",
+            database_changes:
+              packet.database_changes,
+            forbidden_changed_path:
+              forbiddenChangedPath,
+            exact_hashes_verified:
+              exactHashesVerified,
+            security_notes_verified:
+              true
+          }
+        )
+      : update(
+          "fail",
+          "The Build 0087 repository-only security boundary could not be verified.",
+          "Do not manually acknowledge this result. Correct the packet scope, evidence hashes, database-change declaration, or security notes.",
+          {
+            source:
+              "build_0087_repository_security_scope",
+            database_changes:
+              packet.database_changes,
+            forbidden_changed_path:
+              forbiddenChangedPath,
+            exact_hashes_verified:
+              exactHashesVerified,
+            security_notes:
+              packet.security_notes
           }
         );
 }
@@ -3734,6 +4176,18 @@ export async function applyAutomaticQaEvidence(
     )
   ) {
     await addCompletionReconciliationEvidence({
+      supabase,
+      packet,
+      qaRunId,
+      repoRoot,
+      updates: generic.updates
+    });
+  } else if (
+    canonicalAutomaticQaEvidenceProfileApplies(
+      packet
+    )
+  ) {
+    await addCanonicalAutomaticQaEvidenceDependencyEvidence({
       supabase,
       packet,
       qaRunId,
