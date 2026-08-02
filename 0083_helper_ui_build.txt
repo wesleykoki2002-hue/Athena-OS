@@ -1,0 +1,61 @@
+
+> athena-os@0.1.0 build
+> next build
+
+▲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.7s
+  Running TypeScript ...
+  Finished TypeScript in 6.4s ...
+  Collecting page data using 23 workers ...
+  Generating static pages using 23 workers (0/26) ...
+  Generating static pages using 23 workers (6/26) 
+  Generating static pages using 23 workers (12/26) 
+  Generating static pages using 23 workers (19/26) 
+✓ Generating static pages using 23 workers (26/26) in 378ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/build-timer/helper-heartbeat
+├ ƒ /build-timer
+├ ƒ /complete-feature
+├ ƒ /completion-history
+├ ○ /database-changes
+├ ƒ /database-changes/[changeKey]/edit
+├ ƒ /database-changes/new
+├ ○ /database-map
+├ ƒ /intake
+├ ○ /internal-mvp-audit
+├ ○ /logs
+├ ƒ /next
+├ ƒ /operator-login
+├ ƒ /operator-logout
+├ ○ /operator-workflow
+├ ƒ /projects/[projectKey]
+├ ƒ /projects/[projectKey]/edit
+├ ƒ /projects/[projectKey]/modules
+├ ƒ /projects/[projectKey]/modules/new
+├ ○ /qa
+├ ƒ /qa-prefill-preview
+├ ○ /qa-prefill-templates
+├ ƒ /qa-prefill-templates/[featureType]/edit
+├ ƒ /qa-prefill-templates/new
+├ ƒ /qa/[runId]
+├ ƒ /qa/new
+├ ○ /reusable
+├ ƒ /reusable/[componentKey]
+├ ƒ /reusable/[componentKey]/edit
+├ ○ /sql-queries
+├ ƒ /start-build
+└ ƒ /update
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

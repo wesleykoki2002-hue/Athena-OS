@@ -1,0 +1,53 @@
+{
+  "status": "build_0085_gate_functional_and_automatic_qa_transactional_validation_pass",
+  "security_matrix": {
+    "ungated_transition_rejected": true,
+    "transition_gate_trigger_verified": true,
+    "browser_roles_no_gate_table_access": true,
+    "override_append_only_delete_rejected": true,
+    "candidate_append_only_delete_rejected": true,
+    "evaluation_append_only_update_rejected": true,
+    "service_role_exact_select_only_gate_tables": true
+  },
+  "functional_matrix": {
+    "new_capability_preview_pass": true,
+    "active_scope_conflict_block_pass": true,
+    "insufficient_evidence_block_pass": true,
+    "new_capability_wrapper_start_pass": true,
+    "repair_existing_narrowed_scope_pass": true,
+    "duplicate_completed_scope_block_pass": true,
+    "extension_existing_narrowed_scope_pass": true,
+    "automatic_qa_evidence_rpc_readback_pass": true,
+    "deterministic_overlap_score_bounds_pass": true,
+    "governed_override_idempotent_replay_pass": true,
+    "governed_override_exact_acknowledgement_pass": true,
+    "governed_override_incomplete_acknowledgement_rejected": true
+  },
+  "persistent_mutations": {
+    "qa": false,
+    "git": false,
+    "timer": false,
+    "database": false,
+    "build_log": false,
+    "completion": false
+  },
+  "preserved_live_state": {
+    "qa_pass": 4,
+    "qa_total": 12,
+    "qa_pending": 8,
+    "timer_status": "active",
+    "build_log_count": 0,
+    "lifecycle_build_id": "0085",
+    "gate_override_count": 0,
+    "gate_candidate_count": 0,
+    "gate_evaluation_count": 0,
+    "completion_event_count": 0,
+    "completion_packet_count": 0
+  },
+  "transactional_fixture": true,
+  "fixture_rollback_verified": true,
+  "target_supabase_project_ref": "voiwlcvfahykdldtjeqy",
+  "persistent_build_0086_created": false,
+  "persistent_build_0087_created": false,
+  "validation_sql_sha256": "66ae0bbddf4c2c96d8c74db859e28912850f030e9eeb247a3652c678b7fb270e"
+}

@@ -1,0 +1,64 @@
+{
+  "status": "canonical_build_0085_database_migration_and_privilege_repair_post_verification_pass",
+  "security": {
+    "anon_authenticated_access": false,
+    "append_only_triggers_enabled": true,
+    "service_role_public_rpc_execute": true,
+    "internal_rpc_service_role_execute": false,
+    "lifecycle_transition_gate_enabled": true,
+    "service_role_exact_select_only_tables": true
+  },
+  "read_only": true,
+  "build_0085": {
+    "qa_counts": {
+      "fail": 0,
+      "pass": 4,
+      "total": 12,
+      "pending": 8,
+      "warning": 0,
+      "not_applicable": 0
+    },
+    "qa_run_id": "b501717b-af63-4504-b519-128702cd1b7b",
+    "qa_status": "pending",
+    "timer_status": "active",
+    "build_log_count": 0,
+    "timer_session_id": "1cd83ad3-23a0-43c0-b993-6ab17a53f664",
+    "lifecycle_state_id": "55a13a94-8af2-446f-b94e-5df30b112fce",
+    "completion_event_count": 0,
+    "completion_packet_count": 0,
+    "lifecycle_transition_id": "148fddb5-420f-449c-873b-6b6a1d7496b5"
+  },
+  "migrations": [
+    {
+      "sha256": "dc068ee2ff5a5cb0585408f8e9d84d98a4d5233a3be678078a8d54a8f9a7f188",
+      "version": "20260729133800",
+      "filename": "20260729133800_0085_pre_build_redundancy_existing_capability_gate.sql",
+      "object_application_verified": true
+    },
+    {
+      "sha256": "31d89ac004e14dd97e980d54adfedb871c6e595a2e386c385d8d7d95ed1f148b",
+      "version": "20260730111500",
+      "filename": "20260730111500_0085_gate_service_role_table_privilege_repair.sql",
+      "privilege_repair_verified": true
+    }
+  ],
+  "gate_objects": {
+    "index_count": 3,
+    "table_count": 3,
+    "trigger_count": 7,
+    "function_count": 11,
+    "override_row_count": 0,
+    "candidate_row_count": 0,
+    "evaluation_row_count": 0,
+    "rls_enabled_table_count": 3
+  },
+  "preserved_boundaries": {
+    "qa_mutated": false,
+    "timer_mutated": false,
+    "build_log_created": false,
+    "completion_created": false,
+    "git_mutation_performed": false,
+    "post_verification_database_mutation": false
+  },
+  "target_supabase_project_ref": "voiwlcvfahykdldtjeqy"
+}

@@ -52,3 +52,10 @@
 *.woff binary
 *.woff2 binary
 *.zip binary
+
+# Build 0087 immutable automatic-QA evidence: preserve exact bytes.
+0083_helper_ui_build.txt -text
+0083_helper_ui_eslint.txt -text
+supabase/tests/evidence/20260730_0085_database_post_verification.json -text
+supabase/tests/evidence/20260730_0085_functional_validation.json -text
+supabase/tests/evidence/20260730_0085_source_build_validation.json -text
