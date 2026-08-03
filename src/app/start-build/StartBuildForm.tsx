@@ -263,8 +263,9 @@ export default function StartBuildForm({
           />
 
           <p className="mt-1 text-xs text-black/35">
-            Prompt-generation field only. The governed lifecycle ignores this
-            value and derives the canonical build ID under database locking.
+            Prompt-generation field only. The governed lifecycle never trusts this
+            value. It preserves the exact approved external project ID or derives
+            the next Athena numeric ID under database locking.
           </p>
         </div>
 

@@ -59,11 +59,17 @@ function clean(input: string | undefined) {
   return input?.trim() || "";
 }
 
-function normalizeBuildName(value: string) {
-  return value
+function normalizeBuildName(value: string, buildId: string) {
+  let normalized = value
     .replace(/^\s*[0-9]{4}\s+Build title:\s*/i, "")
     .replace(/^\s*Build title:\s*/i, "")
     .trim();
+
+  if (buildId && normalized.toLowerCase().startsWith(`${buildId.toLowerCase()} `)) {
+    normalized = normalized.slice(buildId.length + 1).trim();
+  }
+
+  return normalized;
 }
 
 function buildStarterPrompt(input: {
@@ -366,32 +372,40 @@ export default async function StartBuildPage({
 
   if (lifecycleReady && lifecycleStatus !== "started") {
     try {
-      const localEvidence =
-        await verifyCanonicalBuildLifecycleLocalEvidence();
       const request: CanonicalBuildLifecycleRequest = {
         intakeId,
         preparationPackageId,
         projectKey,
         moduleKey,
         moduleId,
-        buildName: normalizeBuildName(buildTitle),
+        buildName: normalizeBuildName(buildTitle, buildId),
         targetSystem,
         trackingSystem
       };
+      const localEvidence =
+        await verifyCanonicalBuildLifecycleLocalEvidence(request);
 
       gatePreview = await previewCanonicalPreBuildGate({
         request,
         localEvidence,
         requestEvidence: {
           local_handoff_verified: true,
+          repository_path_verified: true,
+          repository_branch_verified: true,
           repository_head_verified: true,
           repository_tree_verified: true,
           repository_evidence_verified: true,
           tracked_diff_empty: true,
           staged_diff_empty: true,
           supabase_project_verified: true,
+          target_supabase_project_verified: true,
+          target_supabase_project_ref: localEvidence.targetSupabaseProjectRef,
+          repository_branch: localEvidence.repositoryBranch,
+          build_identity_kind: localEvidence.buildIdentityKind,
+          canonical_build_id: localEvidence.canonicalBuildId,
+          canonical_build_title: localEvidence.canonicalBuildTitle,
           preview_only: true,
-          evidence_schema: "canonical-pre-build-gate-preview-v1"
+          evidence_schema: "canonical-pre-build-gate-preview-v2"
         }
       });
     } catch (error) {
@@ -523,7 +537,7 @@ export default async function StartBuildPage({
             </div>
 
             <div className="rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800">
-              Database derives the build ID
+              Database preserves approved external IDs or derives Athena numeric IDs
             </div>
           </div>
 
@@ -532,9 +546,11 @@ export default async function StartBuildPage({
             the signed operator session, approved Intake, exact preparation
             package, canonical registries, prior-build closure, repository,
             handoff, Supabase identity, existing capability, redundancy,
-            scope narrowing, and collision state. The submitted Build ID field
-            is never sent to the lifecycle RPC. The database recomputes the gate
-            atomically before it permits assignment and formal start.
+            scope narrowing, target repository evidence, target Supabase identity,
+            and collision state. The submitted Build ID field is never trusted by
+            the lifecycle RPC. The database preserves an approved external project
+            identity or derives the next Athena numeric ID under global locking,
+            then recomputes the gate atomically before formal start.
           </p>
 
           {lifecycleStatus === "started" ? (

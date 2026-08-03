@@ -125,7 +125,10 @@ const PRE_BUILD_GATE_FILES = [
   "supabase/tests/20260730123000_0085_gate_functional_and_automatic_qa_transactional_validation.sql",
   "supabase/tests/evidence/20260730_0085_source_build_validation.json",
   "supabase/tests/evidence/20260730_0085_database_post_verification.json",
-  "supabase/tests/evidence/20260730_0085_functional_validation.json"
+  "supabase/tests/evidence/20260730_0085_functional_validation.json",
+  "supabase/migrations/20260803123000_zero_build_external_project_build_identity_lifecycle_support.sql",
+  "supabase/tests/20260803123001_zero_build_external_project_build_identity_lifecycle_automatic_qa.sql",
+  "supabase/tests/20260803123002_zero_build_external_project_build_identity_lifecycle_transactional_validation.sql"
 ];
 
 const CORE_ROUTE_FILES = [
@@ -2977,6 +2980,18 @@ async function addPreBuildGateEvidence(input: {
     fileByPath.get(
       "supabase/tests/evidence/20260730_0085_functional_validation.json"
     );
+  const externalIdentityRepairMigration =
+    fileByPath.get(
+      "supabase/migrations/20260803123000_zero_build_external_project_build_identity_lifecycle_support.sql"
+    );
+  const externalIdentityStructuralTest =
+    fileByPath.get(
+      "supabase/tests/20260803123001_zero_build_external_project_build_identity_lifecycle_automatic_qa.sql"
+    );
+  const externalIdentityTransactionalTest =
+    fileByPath.get(
+      "supabase/tests/20260803123002_zero_build_external_project_build_identity_lifecycle_transactional_validation.sql"
+    );
   const lifecycleAction = fileByPath.get(
     "src/app/start-build/lifecycle-actions.ts"
   );
@@ -3083,6 +3098,44 @@ async function addPreBuildGateEvidence(input: {
           "automatic_qa_evidence_rpc_readback_pass",
           "ungated_transition_rejected",
           "fixture_rollback_verified",
+          "rollback;"
+        ]
+      )
+    );
+
+  const externalIdentityRepairContractVerified =
+    Boolean(
+      externalIdentityRepairMigration?.exists &&
+      includesAll(
+        externalIdentityRepairMigration.content,
+        [
+          "canonical_external_project_identity",
+          "numeric_sequence_candidate_id",
+          "athena_build_lifecycle_state_identity_guard",
+          "athena_build_lifecycle_transitions_identity_guard",
+          "target_supabase_project_verified",
+          "BDNA-ING-0004",
+          "Build 0088 is already assigned or reserved"
+        ]
+      ) &&
+      externalIdentityStructuralTest?.exists &&
+      includesAll(
+        externalIdentityStructuralTest.content,
+        [
+          "zero_build_external_project_identity_automatic_qa_pass",
+          "conditional_identity_constraints_present",
+          "package_identity_guards_present",
+          "build_0088_unassigned"
+        ]
+      ) &&
+      externalIdentityTransactionalTest?.exists &&
+      includesAll(
+        externalIdentityTransactionalTest.content,
+        [
+          "zero_build_external_identity_numeric_compatibility_pass",
+          "zero_build_external_project_identity_transactional_validation_pass",
+          "numeric_sequence_consumed",
+          "wrong_target_supabase_rejection_pass",
           "rollback;"
         ]
       )
@@ -3205,13 +3258,14 @@ async function addPreBuildGateEvidence(input: {
     gateModuleVerified &&
     privilegeRepairContractVerified &&
     functionalTestContractVerified &&
+    externalIdentityRepairContractVerified &&
     sourceBuildVerified &&
     databasePostVerified &&
     functionalValidationVerified
       ? update(
           "pass",
-          "The mandatory pre-build gate route integration, server module, two migrations, three SQL tests, and three retained evidence records exist in the exact governed paths.",
-          "Automatic evidence verified all 15 Build 0085 source/evidence files, the repaired privilege boundary, and the executed rollback-only functional contract.",
+          "The mandatory pre-build gate route integration, server modules, three migrations, five SQL tests, and three retained evidence records exist in the exact governed paths.",
+          "Automatic evidence verified the complete pre-build gate source set, the repaired privilege boundary, external project identity support, and both rollback-only numeric and external lifecycle contracts.",
           {
             source:
               "build_0085_repository_contract",
@@ -3230,6 +3284,8 @@ async function addPreBuildGateEvidence(input: {
               privilegeRepairContractVerified,
             functional_test_contract_verified:
               functionalTestContractVerified,
+            external_identity_repair_contract_verified:
+              externalIdentityRepairContractVerified,
             source_build_evidence_verified:
               sourceBuildVerified,
             database_post_verification_evidence_verified:
@@ -3240,7 +3296,7 @@ async function addPreBuildGateEvidence(input: {
         )
       : update(
           "fail",
-          "One or more required Build 0085 files or gate-enforcement tokens are missing.",
+          "One or more required pre-build gate or external-identity files or enforcement tokens are missing.",
           "The exact missing file and source-contract evidence is attached.",
           {
             source:
@@ -3260,6 +3316,8 @@ async function addPreBuildGateEvidence(input: {
               privilegeRepairContractVerified,
             functional_test_contract_verified:
               functionalTestContractVerified,
+            external_identity_repair_contract_verified:
+              externalIdentityRepairContractVerified,
             source_build_evidence_verified:
               sourceBuildVerified,
             database_post_verification_evidence_verified:

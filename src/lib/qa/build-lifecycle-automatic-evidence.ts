@@ -119,8 +119,10 @@ export async function readBuildLifecycleAutomaticEvidence(
     {
       checkKey: "state_identity_matches",
       passed:
+        state?.build_number === expected.build_number &&
         state?.build_id === expected.build_id &&
         state?.build_title === expected.build_title &&
+        state?.assignment_method === expected.assignment_method &&
         state?.operation_key === expected.operation_key &&
         state?.request_hash === expected.request_hash,
       evidence: {
@@ -131,12 +133,57 @@ export async function readBuildLifecycleAutomaticEvidence(
     {
       checkKey: "transition_identity_matches",
       passed:
+        transition?.build_number === expected.build_number &&
         transition?.build_id === expected.build_id &&
+        transition?.build_title === expected.build_title &&
+        transition?.assignment_method === expected.assignment_method &&
         transition?.operation_key === expected.operation_key &&
         transition?.request_hash === expected.request_hash,
       evidence: {
         expectedTransitionId: expected.transition_id,
         actualTransitionId: transition?.id || null,
+      },
+    },
+    {
+      checkKey: "build_identity_mode_matches",
+      passed:
+        (expected.build_identity_kind === "numeric" &&
+          expected.build_number !== null &&
+          expected.numeric_sequence_consumed === true &&
+          expected.build_id ===
+            String(expected.build_number).padStart(4, "0")) ||
+        (expected.build_identity_kind === "external" &&
+          expected.build_number === null &&
+          expected.numeric_sequence_consumed === false &&
+          /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/.test(expected.build_id)),
+      evidence: {
+        buildIdentityKind: expected.build_identity_kind,
+        buildNumber: expected.build_number,
+        buildId: expected.build_id,
+        numericSequenceCandidateId:
+          expected.numeric_sequence_candidate_id,
+        numericSequenceConsumed: expected.numeric_sequence_consumed,
+      },
+    },
+    {
+      checkKey: "target_supabase_evidence_matches",
+      passed: Boolean(
+        state?.evidence &&
+        typeof state.evidence === "object" &&
+        !Array.isArray(state.evidence) &&
+        (state.evidence as Record<string, unknown>)
+          .target_supabase_project_ref ===
+          expected.target_supabase_project_ref &&
+        transition?.request_evidence &&
+        typeof transition.request_evidence === "object" &&
+        !Array.isArray(transition.request_evidence) &&
+        (transition.request_evidence as Record<string, unknown>)
+          .target_supabase_project_ref ===
+          expected.target_supabase_project_ref,
+      ),
+      evidence: {
+        expectedTargetSupabaseProjectRef:
+          expected.target_supabase_project_ref,
       },
     },
     {

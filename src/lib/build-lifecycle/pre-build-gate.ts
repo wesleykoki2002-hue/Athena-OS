@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  CanonicalBuildIdentityKind,
   CanonicalBuildLifecycleLocalEvidence,
   CanonicalBuildLifecycleRequest,
   CanonicalBuildLifecycleResult,
@@ -74,6 +75,26 @@ function requiredNumber(
   }
 
   return parsed;
+}
+
+function buildIdentityKindValue(value: unknown): CanonicalBuildIdentityKind {
+  if (value !== "numeric" && value !== "external") {
+    throw new Error("Canonical build identity kind is invalid.");
+  }
+
+  return value;
+}
+
+function nullableBuildNumber(value: unknown): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  return requiredNumber(value, "build_number", {
+    integer: true,
+    minimum: 1,
+    maximum: 9999,
+  });
 }
 
 function classificationValue(value: unknown): CanonicalPreBuildGateClassification {
@@ -241,6 +262,19 @@ function validatePreviewResult(value: unknown): CanonicalPreBuildGatePreviewResu
       "repository_evidence_sha256",
     ),
     handoff_sha256: requiredString(value.handoff_sha256, "handoff_sha256"),
+    target_supabase_project_ref: requiredString(
+      value.target_supabase_project_ref,
+      "target_supabase_project_ref",
+    ),
+    build_identity_kind: buildIdentityKindValue(value.build_identity_kind),
+    canonical_build_id:
+      typeof value.canonical_build_id === "string"
+        ? value.canonical_build_id
+        : null,
+    canonical_build_title:
+      typeof value.canonical_build_title === "string"
+        ? value.canonical_build_title
+        : null,
   };
 }
 
@@ -346,7 +380,50 @@ function validateStartResponse(value: unknown): CanonicalBuildLifecycleStartResp
     throw new Error("Started lifecycle gate decision is contradictory.");
   }
 
-  return value as CanonicalBuildLifecycleResult;
+  const buildIdentityKind = buildIdentityKindValue(
+    value.build_identity_kind,
+  );
+  const buildNumber = nullableBuildNumber(value.build_number);
+  const buildId = requiredString(value.build_id, "build_id");
+  const buildTitle = requiredString(value.build_title, "build_title");
+  const assignmentMethod = requiredString(
+    value.assignment_method,
+    "assignment_method",
+  );
+  const nextNumericBuildId = requiredString(
+    value.numeric_sequence_candidate_id,
+    "numeric_sequence_candidate_id",
+  );
+
+  if (!/^[0-9]{4}$/.test(nextNumericBuildId)) {
+    throw new Error("Next numeric build identity is invalid.");
+  }
+
+  if (
+    typeof value.numeric_sequence_consumed !== "boolean" ||
+    (buildIdentityKind === "numeric" &&
+      (buildNumber === null ||
+        buildId !== String(buildNumber).padStart(4, "0") ||
+        assignmentMethod !== "canonical_lifecycle_highest_used_plus_one" ||
+        value.numeric_sequence_consumed !== true)) ||
+    (buildIdentityKind === "external" &&
+      (buildNumber !== null ||
+        !/^[A-Z0-9]+(?:-[A-Z0-9]+)+$/.test(buildId) ||
+        assignmentMethod !== "canonical_external_project_identity" ||
+        value.numeric_sequence_consumed !== false))
+  ) {
+    throw new Error("Started lifecycle build identity is contradictory.");
+  }
+
+  return {
+    ...value,
+    build_number: buildNumber,
+    build_identity_kind: buildIdentityKind,
+    build_id: buildId,
+    build_title: buildTitle,
+    assignment_method: assignmentMethod,
+    numeric_sequence_candidate_id: nextNumericBuildId,
+  } as CanonicalBuildLifecycleResult;
 }
 
 function rpcArguments(identity: GateIdentity) {
@@ -395,7 +472,12 @@ export async function previewCanonicalPreBuildGate(input: {
     result.repository_tree !== input.localEvidence.repositoryTree ||
     result.repository_evidence_sha256 !==
       input.localEvidence.repositoryEvidenceSha256 ||
-    result.handoff_sha256 !== input.localEvidence.handoffSha256
+    result.handoff_sha256 !== input.localEvidence.handoffSha256 ||
+    result.target_supabase_project_ref !==
+      input.localEvidence.targetSupabaseProjectRef ||
+    result.build_identity_kind !== input.localEvidence.buildIdentityKind ||
+    result.canonical_build_id !== input.localEvidence.canonicalBuildId ||
+    result.canonical_build_title !== input.localEvidence.canonicalBuildTitle
   ) {
     throw new Error("Pre-build gate preview evidence identity did not match local evidence.");
   }

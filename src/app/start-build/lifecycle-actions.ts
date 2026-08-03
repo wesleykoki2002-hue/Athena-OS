@@ -20,7 +20,8 @@ import type {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KEY_PATTERN = /^[a-z0-9][a-z0-9-]{1,79}$/;
-const BUILD_ID_PATTERN = /^[0-9]{4}$/;
+const NUMERIC_BUILD_ID_PATTERN = /^[0-9]{4}$/;
+const EXTERNAL_BUILD_ID_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/;
 
 function requiredText(value: FormDataEntryValue | null, name: string): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -50,11 +51,15 @@ function validateKey(value: string, name: string): string {
   return value;
 }
 
-function normalizeBuildName(value: string): string {
-  const normalized = value
+function normalizeBuildName(value: string, buildId: string): string {
+  let normalized = value
     .replace(/^\s*[0-9]{4}\s+Build title:\s*/i, "")
     .replace(/^\s*Build title:\s*/i, "")
     .trim();
+
+  if (buildId && normalized.toLowerCase().startsWith(`${buildId.toLowerCase()} `)) {
+    normalized = normalized.slice(buildId.length + 1).trim();
+  }
 
   if (!normalized) {
     throw new Error("Canonical build name is required.");
@@ -83,6 +88,7 @@ function deterministicOperationKey(
   handoffSha256: string,
   repositoryHead: string,
   repositoryEvidenceSha256: string,
+  targetSupabaseProjectRef: string,
 ): string {
   const requestIdentity = canonicalJson({
     ...request,
@@ -90,6 +96,7 @@ function deterministicOperationKey(
     handoffSha256,
     repositoryHead,
     repositoryEvidenceSha256,
+    targetSupabaseProjectRef,
   });
   const digest = createHash("sha256")
     .update(requestIdentity, "utf8")
@@ -101,6 +108,8 @@ function deterministicOperationKey(
 function parseCanonicalBuildLifecycleRequest(
   formData: FormData,
 ): CanonicalBuildLifecycleRequest {
+  const requestedBuildId = optionalText(formData.get("return_build_id"));
+
   return {
     intakeId: validateUuid(
       requiredText(formData.get("intake_id"), "intake_id"),
@@ -127,6 +136,7 @@ function parseCanonicalBuildLifecycleRequest(
     ),
     buildName: normalizeBuildName(
       requiredText(formData.get("build_name"), "build_name"),
+      requestedBuildId,
     ),
     targetSystem: requiredText(
       formData.get("target_system"),
@@ -142,21 +152,44 @@ function parseCanonicalBuildLifecycleRequest(
 function readAfterWriteMatches(
   result: CanonicalBuildLifecycleResult,
   request: CanonicalBuildLifecycleRequest,
-  repositoryHead: string,
-  handoffSha256: string,
+  localEvidence: Awaited<
+    ReturnType<typeof verifyCanonicalBuildLifecycleLocalEvidence>
+  >,
 ): boolean {
-  return (
-    result.status === "canonical_build_assigned_and_started" &&
-    BUILD_ID_PATTERN.test(result.build_id) &&
+  const numericIdentityMatches =
+    result.build_identity_kind === "numeric" &&
+    result.build_number !== null &&
+    NUMERIC_BUILD_ID_PATTERN.test(result.build_id) &&
+    result.build_id === String(result.build_number).padStart(4, "0") &&
     result.build_title ===
       `${result.build_id} Build title: ${request.buildName}` &&
+    result.assignment_method === "canonical_lifecycle_highest_used_plus_one" &&
+    result.numeric_sequence_consumed === true;
+
+  const externalIdentityMatches =
+    result.build_identity_kind === "external" &&
+    result.build_number === null &&
+    EXTERNAL_BUILD_ID_PATTERN.test(result.build_id) &&
+    result.build_id === localEvidence.canonicalBuildId &&
+    result.build_title === localEvidence.canonicalBuildTitle &&
+    result.assignment_method === "canonical_external_project_identity" &&
+    result.numeric_sequence_consumed === false;
+
+  return (
+    result.status === "canonical_build_assigned_and_started" &&
+    (numericIdentityMatches || externalIdentityMatches) &&
+    NUMERIC_BUILD_ID_PATTERN.test(result.numeric_sequence_candidate_id) &&
     result.intake_id === request.intakeId &&
     result.preparation_package_id === request.preparationPackageId &&
     result.project_key === request.projectKey &&
     result.module_key === request.moduleKey &&
     result.module_id === request.moduleId &&
-    result.repository_head === repositoryHead &&
-    result.handoff_sha256 === handoffSha256 &&
+    result.repository_path === localEvidence.repositoryPath &&
+    result.repository_head === localEvidence.repositoryHead &&
+    result.supabase_project_ref === localEvidence.supabaseProjectRef &&
+    result.target_supabase_project_ref ===
+      localEvidence.targetSupabaseProjectRef &&
+    result.handoff_sha256 === localEvidence.handoffSha256 &&
     /^[0-9a-f]{64}$/.test(result.gate_scope_hash) &&
     /^[0-9a-f]{64}$/.test(result.gate_request_hash) &&
     Boolean(result.gate_evaluation_id) &&
@@ -209,26 +242,35 @@ export async function startCanonicalBuildLifecycle(
   const request = parseCanonicalBuildLifecycleRequest(formData);
   const operator = await requireLifecycleOperatorSession();
   const localEvidence =
-    await verifyCanonicalBuildLifecycleLocalEvidence();
+    await verifyCanonicalBuildLifecycleLocalEvidence(request);
   const operationKey = deterministicOperationKey(
     request,
     operator.operatorKey,
     localEvidence.handoffSha256,
     localEvidence.repositoryHead,
     localEvidence.repositoryEvidenceSha256,
+    localEvidence.targetSupabaseProjectRef,
   );
 
   const requestEvidence = {
     local_handoff_verified: true,
+    repository_path_verified: true,
+    repository_branch_verified: true,
     repository_head_verified: true,
     repository_tree_verified: true,
     repository_evidence_verified: true,
     tracked_diff_empty: localEvidence.trackedDiffEmpty,
     staged_diff_empty: localEvidence.stagedDiffEmpty,
     supabase_project_verified: true,
+    target_supabase_project_verified: true,
+    target_supabase_project_ref: localEvidence.targetSupabaseProjectRef,
+    repository_branch: localEvidence.repositoryBranch,
+    build_identity_kind: localEvidence.buildIdentityKind,
+    canonical_build_id: localEvidence.canonicalBuildId,
+    canonical_build_title: localEvidence.canonicalBuildTitle,
     operator_session_verified: true,
     handoff_path: localEvidence.handoffPath,
-    evidence_schema: "canonical-pre-build-gate-server-evidence-v1",
+    evidence_schema: "canonical-pre-build-gate-server-evidence-v2",
   };
 
   const result = await gateAndStartCanonicalBuildLifecycle({
@@ -251,8 +293,7 @@ export async function startCanonicalBuildLifecycle(
     !readAfterWriteMatches(
       result,
       request,
-      localEvidence.repositoryHead,
-      localEvidence.handoffSha256,
+      localEvidence,
     )
   ) {
     throw new Error(

@@ -1,3 +1,5 @@
+export type CanonicalBuildIdentityKind = "numeric" | "external";
+
 export type CanonicalBuildLifecycleRequest = {
   intakeId: string;
   preparationPackageId: string;
@@ -10,14 +12,19 @@ export type CanonicalBuildLifecycleRequest = {
 };
 
 export type CanonicalBuildLifecycleLocalEvidence = {
+  buildIdentityKind: CanonicalBuildIdentityKind;
+  canonicalBuildId: string | null;
+  canonicalBuildTitle: string | null;
   handoffPath: string;
   handoffVersion: string;
   handoffSha256: string;
   repositoryPath: string;
+  repositoryBranch: string;
   repositoryHead: string;
   repositoryTree: string;
   repositoryEvidenceSha256: string;
   supabaseProjectRef: string;
+  targetSupabaseProjectRef: string;
   trackedDiffEmpty: true;
   stagedDiffEmpty: true;
 };
@@ -68,6 +75,10 @@ export type CanonicalPreBuildGatePreviewResult = {
   repository_tree: string;
   repository_evidence_sha256: string;
   handoff_sha256: string;
+  target_supabase_project_ref: string;
+  build_identity_kind: CanonicalBuildIdentityKind;
+  canonical_build_id: string | null;
+  canonical_build_title: string | null;
 };
 
 export type CanonicalPreBuildGateBlockedResult = {
@@ -94,7 +105,8 @@ export type CanonicalBuildLifecycleResult = {
   status: "canonical_build_assigned_and_started";
   state_id: string;
   transition_id: string;
-  build_number: number;
+  build_number: number | null;
+  build_identity_kind: CanonicalBuildIdentityKind;
   build_id: string;
   build_title: string;
   lifecycle_status: "started";
@@ -108,17 +120,22 @@ export type CanonicalBuildLifecycleResult = {
   repository_path: string;
   repository_head: string;
   supabase_project_ref: string;
+  target_supabase_project_ref: string;
   handoff_version: string;
   handoff_sha256: string;
   assigned_at: string;
   started_at: string;
   assigned_by: string;
   started_by: string;
-  assignment_method: "canonical_lifecycle_highest_used_plus_one";
+  assignment_method:
+    | "canonical_lifecycle_highest_used_plus_one"
+    | "canonical_external_project_identity";
   start_method: "canonical_atomic_assign_and_start";
   operation_key: string;
   request_hash: string;
   idempotent_replay: boolean;
+  numeric_sequence_candidate_id: string;
+  numeric_sequence_consumed: boolean;
   timer_started: false;
   qa_created: false;
   completion_created: false;
