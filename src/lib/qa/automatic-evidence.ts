@@ -9,6 +9,25 @@ import {
 import type { CompletionPacket } from "@/lib/completion-packets";
 import { computeQaStatus } from "@/lib/qa-status";
 import { createAthenaCoreClient } from "@/lib/supabase/server";
+import {
+  buildExternalProjectCompletionAutomaticQaUpdates
+} from "@/lib/qa/external-project-completion-evidence";
+import {
+  selectExternalProjectCompletionProfile,
+  type ExternalProjectCompletionProfile
+} from "@/lib/qa/external-project-completion-profile";
+import {
+  evaluateExternalProjectDatabaseEvidence
+} from "@/lib/qa/external-project-database-evidence";
+import {
+  loadExternalProjectDatabaseSnapshot
+} from "@/lib/qa/external-project-database-reader";
+import {
+  verifyExternalProjectRepositoryEvidence
+} from "@/lib/qa/external-project-repository-evidence";
+import {
+  createExternalProjectSupabaseClient
+} from "@/lib/qa/external-project-supabase-client";
 
 type SupabaseClient = ReturnType<typeof createAthenaCoreClient>;
 
@@ -3775,6 +3794,362 @@ async function addPreBuildGateEvidence(input: {
         );
 }
 
+type ExternalProjectLiveEvidenceResult = {
+  finalMigrationHistoryRows: number;
+  security: {
+    rlsEnabledTableCount: number;
+    policyCount: number;
+    finalMigrationHistoryRows: number;
+    evidenceRelativePath: string;
+    evidenceSha256: string;
+  };
+};
+
+function requiredExternalEvidenceRecord(
+  value: unknown,
+  label: string
+): Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    throw new Error(
+      `${label} must be a JSON object.`
+    );
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function requiredExternalEvidenceString(
+  record: Record<string, unknown>,
+  key: string,
+  label: string
+): string {
+  const value = record[key];
+
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    throw new Error(
+      `${label} must contain ${key}.`
+    );
+  }
+
+  return value;
+}
+
+function requiredExternalEvidenceInteger(
+  record: Record<string, unknown>,
+  key: string,
+  label: string
+): number {
+  const value = record[key];
+
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    throw new Error(
+      `${label} must contain a non-negative integer ${key}.`
+    );
+  }
+
+  return value;
+}
+
+async function readExternalProjectLiveSecurityEvidence(input: {
+  profile: ExternalProjectCompletionProfile;
+  repoRoot: string;
+}): Promise<ExternalProjectLiveEvidenceResult> {
+  const {
+    profile,
+    repoRoot
+  } = input;
+
+  const resolvedRoot =
+    path.resolve(repoRoot);
+
+  const evidencePath =
+    path.resolve(
+      resolvedRoot,
+      profile.liveSecurityEvidence
+        .relativePath
+    );
+
+  const evidenceRelativePath =
+    path.relative(
+      resolvedRoot,
+      evidencePath
+    );
+
+  if (
+    evidenceRelativePath === ".." ||
+    evidenceRelativePath.startsWith(
+      `..${path.sep}`
+    ) ||
+    path.isAbsolute(
+      evidenceRelativePath
+    )
+  ) {
+    throw new Error(
+      "External-project live evidence escapes the repository root."
+    );
+  }
+
+  const evidenceBytes =
+    await readFile(evidencePath);
+
+  const evidenceSha256 =
+    createHash("sha256")
+      .update(evidenceBytes)
+      .digest("hex");
+
+  if (
+    evidenceSha256 !==
+    profile.liveSecurityEvidence.sha256
+  ) {
+    throw new Error(
+      "External-project live security evidence hash does not match the governed profile."
+    );
+  }
+
+  const parsed =
+    JSON.parse(
+      evidenceBytes.toString("utf8")
+    ) as unknown;
+
+  const document =
+    requiredExternalEvidenceRecord(
+      parsed,
+      "External-project live evidence"
+    );
+
+  if (
+    requiredExternalEvidenceString(
+      document,
+      "evidence_version",
+      "External-project live evidence"
+    ) !==
+    profile.liveSecurityEvidence
+      .evidenceVersion
+  ) {
+    throw new Error(
+      "External-project live evidence version does not match the governed profile."
+    );
+  }
+
+  const source =
+    requiredExternalEvidenceRecord(
+      document.source,
+      "External-project live evidence source"
+    );
+
+  const migrationHistory =
+    requiredExternalEvidenceRecord(
+      document.migration_history,
+      "External-project migration history"
+    );
+
+  const security =
+    requiredExternalEvidenceRecord(
+      document.security,
+      "External-project security evidence"
+    );
+
+  const assertions =
+    requiredExternalEvidenceRecord(
+      document.assertions,
+      "External-project evidence assertions"
+    );
+
+  if (
+    requiredExternalEvidenceString(
+      source,
+      "method",
+      "External-project evidence source"
+    ) !== "supabase_sql_editor" ||
+    requiredExternalEvidenceString(
+      source,
+      "query_operation",
+      "External-project evidence source"
+    ) !== "read_only" ||
+    requiredExternalEvidenceString(
+      source,
+      "supabase_project_ref",
+      "External-project evidence source"
+    ) !==
+      profile.target.supabaseProjectRef ||
+    requiredExternalEvidenceString(
+      source,
+      "project_key",
+      "External-project evidence source"
+    ) !==
+      profile.packetIdentity.project_key ||
+    requiredExternalEvidenceString(
+      source,
+      "module_key",
+      "External-project evidence source"
+    ) !==
+      profile.packetIdentity.module_key ||
+    requiredExternalEvidenceString(
+      source,
+      "build_id",
+      "External-project evidence source"
+    ) !==
+      profile.liveSecurityEvidence.buildId
+  ) {
+    throw new Error(
+      "External-project live evidence source identity does not match the governed profile."
+    );
+  }
+
+  if (
+    requiredExternalEvidenceString(
+      migrationHistory,
+      "final_migration_version",
+      "External-project migration history"
+    ) !==
+    profile.liveSecurityEvidence
+      .finalMigrationVersion
+  ) {
+    throw new Error(
+      "External-project final migration version does not match the governed profile."
+    );
+  }
+
+  const finalMigrationHistoryRows =
+    requiredExternalEvidenceInteger(
+      migrationHistory,
+      "final_migration_history_rows",
+      "External-project migration history"
+    );
+
+  const rlsEnabledTableCount =
+    requiredExternalEvidenceInteger(
+      security,
+      "rls_enabled_table_count",
+      "External-project security evidence"
+    );
+
+  const policyCount =
+    requiredExternalEvidenceInteger(
+      security,
+      "policy_count",
+      "External-project security evidence"
+    );
+
+  if (
+    !Array.isArray(
+      security.rls_enabled_tables
+    ) ||
+    security.rls_enabled_tables.length !==
+      rlsEnabledTableCount ||
+    !Array.isArray(
+      security.policies
+    ) ||
+    security.policies.length !==
+      policyCount
+  ) {
+    throw new Error(
+      "External-project security evidence arrays do not match their recorded counts."
+    );
+  }
+
+  if (
+    assertions.database_write_performed !==
+      false ||
+    assertions.repository_write_performed !==
+      false ||
+    assertions.expected_values_copied_from_profile !==
+      false
+  ) {
+    throw new Error(
+      "External-project live evidence assertions are not read-only and independent."
+    );
+  }
+
+  return {
+    finalMigrationHistoryRows,
+    security: {
+      rlsEnabledTableCount,
+      policyCount,
+      finalMigrationHistoryRows,
+      evidenceRelativePath:
+        profile.liveSecurityEvidence
+          .relativePath,
+      evidenceSha256
+    }
+  };
+}
+
+async function addExternalProjectCompletionEvidence(input: {
+  profile: ExternalProjectCompletionProfile;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  const {
+    profile,
+    repoRoot,
+    updates
+  } = input;
+
+  const liveEvidence =
+    await readExternalProjectLiveSecurityEvidence({
+      profile,
+      repoRoot
+    });
+
+  const repository =
+    await verifyExternalProjectRepositoryEvidence(
+      profile
+    );
+
+  const beautySupabase =
+    createExternalProjectSupabaseClient(
+      profile
+    );
+
+  const snapshot =
+    await loadExternalProjectDatabaseSnapshot(
+      profile,
+      beautySupabase,
+      {
+        finalMigrationHistoryRows:
+          liveEvidence
+            .finalMigrationHistoryRows
+      }
+    );
+
+  const database =
+    evaluateExternalProjectDatabaseEvidence(
+      profile,
+      snapshot
+    );
+
+  const externalUpdates =
+    buildExternalProjectCompletionAutomaticQaUpdates(
+      {
+        profile,
+        repository,
+        database,
+        security:
+          liveEvidence.security
+      }
+    );
+
+  Object.assign(
+    updates,
+    externalUpdates
+  );
+}
+
 async function persistAutomaticUpdates(input: {
   supabase: SupabaseClient;
   packet: CompletionPacket;
@@ -4207,6 +4582,11 @@ export async function applyAutomaticQaEvidence(
       repoRoot
     });
 
+  const externalProjectProfile =
+    selectExternalProjectCompletionProfile(
+      packet
+    );
+
   if (buildTimerProfileApplies(packet)) {
     await addBuildTimerEvidence({
       supabase,
@@ -4251,6 +4631,14 @@ export async function applyAutomaticQaEvidence(
       qaRunId,
       repoRoot,
       updates: generic.updates
+    });
+  } else if (externalProjectProfile) {
+    await addExternalProjectCompletionEvidence({
+      profile:
+        externalProjectProfile,
+      repoRoot,
+      updates:
+        generic.updates
     });
   } else {
     const genericPending: Record<

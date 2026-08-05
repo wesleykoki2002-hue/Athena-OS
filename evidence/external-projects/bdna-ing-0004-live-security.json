@@ -1,0 +1,45 @@
+{
+    "evidence_version":  "athena-external-project-live-security-v1",
+    "recorded_at_utc":  "2026-08-05T12:10:31.8701934Z",
+    "source":  {
+                   "method":  "supabase_sql_editor",
+                   "query_operation":  "read_only",
+                   "project_name":  "Beauty OS / BeautyDNA",
+                   "supabase_project_ref":  "hidsyvanaipxxyyhjgmc",
+                   "project_key":  "beautydna",
+                   "module_key":  "ingredient-intelligence",
+                   "build_id":  "BDNA-ING-0004"
+               },
+    "migration_history":  {
+                              "final_migration_version":  "20260804124900",
+                              "final_migration_history_rows":  1
+                          },
+    "security":  {
+                     "rls_enabled_table_count":  14,
+                     "rls_enabled_tables":  [
+                                                "beautydna_assessment_answers",
+                                                "beautydna_assessments",
+                                                "beautydna_ingredient_aliases",
+                                                "beautydna_ingredient_compatibility_rules",
+                                                "beautydna_ingredient_intelligence",
+                                                "beautydna_ingredient_review_queue",
+                                                "beautydna_passports",
+                                                "beautydna_product_dna",
+                                                "beautydna_product_ingredient_matches",
+                                                "beautydna_product_ingredients",
+                                                "beautydna_products",
+                                                "beautydna_recommendations",
+                                                "beautydna_recommended_products",
+                                                "beautydna_review_queue"
+                                            ],
+                     "policy_count":  0,
+                     "policies":  [
+
+                                  ]
+                 },
+    "assertions":  {
+                       "database_write_performed":  false,
+                       "repository_write_performed":  false,
+                       "expected_values_copied_from_profile":  false
+                   }
+}
