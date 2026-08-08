@@ -262,15 +262,20 @@ export async function startCanonicalBuildLifecycle(
     tracked_diff_empty: localEvidence.trackedDiffEmpty,
     staged_diff_empty: localEvidence.stagedDiffEmpty,
     supabase_project_verified: true,
-    target_supabase_project_verified: true,
+    target_supabase_project_verified: localEvidence.targetSupabaseProjectVerified,
     target_supabase_project_ref: localEvidence.targetSupabaseProjectRef,
+    target_supabase_applicability: localEvidence.targetSupabaseApplicability,
+    target_supabase_repository_link_verified:
+      localEvidence.targetSupabaseRepositoryLinkVerified,
+    supabase_usage: localEvidence.targetSupabaseUsage,
+    product_database: localEvidence.productDatabase,
     repository_branch: localEvidence.repositoryBranch,
     build_identity_kind: localEvidence.buildIdentityKind,
     canonical_build_id: localEvidence.canonicalBuildId,
     canonical_build_title: localEvidence.canonicalBuildTitle,
     operator_session_verified: true,
     handoff_path: localEvidence.handoffPath,
-    evidence_schema: "canonical-pre-build-gate-server-evidence-v2",
+    evidence_schema: "canonical-pre-build-gate-server-evidence-v3",
   };
 
   const result = await gateAndStartCanonicalBuildLifecycle({

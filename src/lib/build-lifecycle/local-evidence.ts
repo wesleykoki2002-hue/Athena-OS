@@ -9,6 +9,9 @@ import type {
   CanonicalBuildLifecycleLocalEvidence,
   CanonicalBuildLifecycleRequest,
 } from "@/lib/build-lifecycle/types";
+import {
+  classifyCanonicalTargetSupabaseApplicability,
+} from "@/lib/build-lifecycle/supabase-applicability";
 import { createAthenaCoreClient } from "@/lib/supabase/server";
 
 const execFileAsync = promisify(execFile);
@@ -130,6 +133,8 @@ async function loadCanonicalTarget(
   const intakeMetadata = asRecord(intake.metadata);
   const packageMetadata = asRecord(preparationPackage.metadata);
   const projectMetadata = asRecord(project.metadata);
+  const targetSupabaseApplicability =
+    classifyCanonicalTargetSupabaseApplicability(projectMetadata);
 
   if (
     intake.id !== request.intakeId ||
@@ -186,6 +191,16 @@ async function loadCanonicalTarget(
     ],
   );
 
+  if (
+    targetSupabaseApplicability.mode ===
+      "repository_only_no_product_database" &&
+    targetSupabaseProjectRef !== CONTROL_PLANE_PROJECT_REF
+  ) {
+    throw new Error(
+      "Repository-only target Supabase evidence contradicts the Athena control-plane identity.",
+    );
+  }
+
   const canonicalHandoffVersion = ensureConsistentValues(
     "handoff version",
     [
@@ -208,6 +223,7 @@ async function loadCanonicalTarget(
     canonicalBuildTitle: proposedBuildTitle || null,
     canonicalRepositoryPath,
     targetSupabaseProjectRef,
+    targetSupabaseApplicability,
     canonicalHandoffVersion,
     handoffFilenames: Array.from(new Set(handoffFilenames)),
   };
@@ -340,28 +356,42 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence(
     throw new Error("Canonical repository contains no tracked-file evidence.");
   }
 
-  const targetProjectRefPath = path.join(
-    repositoryPath,
-    "supabase",
-    ".temp",
-    "project-ref",
-  );
-  const linkedTargetSupabaseProjectRef = (
-    await readFile(targetProjectRefPath, "utf8")
-  ).trim();
+  let linkedTargetSupabaseProjectRef: string | null = null;
+  let targetSupabaseRepositoryLinkVerified = false;
 
-  if (linkedTargetSupabaseProjectRef !== target.targetSupabaseProjectRef) {
-    throw new Error(
-      `Target repository is linked to the wrong Supabase project. Expected ${target.targetSupabaseProjectRef}; found ${linkedTargetSupabaseProjectRef || "none"}.`,
+  if (target.targetSupabaseApplicability.mode === "database_backed") {
+    const targetProjectRefPath = path.join(
+      repositoryPath,
+      "supabase",
+      ".temp",
+      "project-ref",
     );
+    linkedTargetSupabaseProjectRef = (
+      await readFile(targetProjectRefPath, "utf8")
+    ).trim();
+
+    if (linkedTargetSupabaseProjectRef !== target.targetSupabaseProjectRef) {
+      throw new Error(
+        `Target repository is linked to the wrong Supabase project. Expected ${target.targetSupabaseProjectRef}; found ${linkedTargetSupabaseProjectRef || "none"}.`,
+      );
+    }
+
+    targetSupabaseRepositoryLinkVerified = true;
   }
+
+  const targetSupabaseRepositoryEvidence =
+    target.targetSupabaseApplicability.mode === "database_backed"
+      ? `repository_link_verified:${linkedTargetSupabaseProjectRef}`
+      : "repository_link_not_applicable";
 
   const repositoryEvidenceSha256 = sha256(
     [
+      target.targetSupabaseApplicability.mode,
       repositoryBranch,
       repositoryHead,
       repositoryTree,
-      linkedTargetSupabaseProjectRef,
+      target.targetSupabaseProjectRef,
+      targetSupabaseRepositoryEvidence,
       trackedIndex,
     ].join("\n"),
   );
@@ -395,7 +425,12 @@ export async function verifyCanonicalBuildLifecycleLocalEvidence(
     repositoryTree,
     repositoryEvidenceSha256,
     supabaseProjectRef,
-    targetSupabaseProjectRef: linkedTargetSupabaseProjectRef,
+    targetSupabaseProjectRef: target.targetSupabaseProjectRef,
+    targetSupabaseApplicability: target.targetSupabaseApplicability.mode,
+    targetSupabaseProjectVerified: true,
+    targetSupabaseRepositoryLinkVerified,
+    targetSupabaseUsage: target.targetSupabaseApplicability.supabaseUsage,
+    productDatabase: target.targetSupabaseApplicability.productDatabase,
     trackedDiffEmpty: true,
     stagedDiffEmpty: true,
   };

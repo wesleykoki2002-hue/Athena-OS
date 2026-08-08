@@ -1,3 +1,5 @@
+import type { CanonicalTargetSupabaseApplicability } from "./supabase-applicability";
+
 export type CanonicalBuildIdentityKind = "numeric" | "external";
 
 export type CanonicalBuildLifecycleRequest = {
@@ -25,6 +27,11 @@ export type CanonicalBuildLifecycleLocalEvidence = {
   repositoryEvidenceSha256: string;
   supabaseProjectRef: string;
   targetSupabaseProjectRef: string;
+  targetSupabaseApplicability: CanonicalTargetSupabaseApplicability;
+  targetSupabaseProjectVerified: true;
+  targetSupabaseRepositoryLinkVerified: boolean;
+  targetSupabaseUsage: string | null;
+  productDatabase: string | null;
   trackedDiffEmpty: true;
   stagedDiffEmpty: true;
 };
