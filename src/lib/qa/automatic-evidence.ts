@@ -17,6 +17,14 @@ import {
   type ExternalProjectCompletionProfile
 } from "@/lib/qa/external-project-completion-profile";
 import {
+  buildExternalProjectRepositoryOnlyAutomaticQaUpdates,
+  verifyExternalProjectRepositoryOnlyEvidence
+} from "@/lib/qa/external-project-repository-only-evidence";
+import {
+  selectExternalProjectRepositoryOnlyProfile,
+  type ExternalProjectRepositoryOnlyProfile
+} from "@/lib/qa/external-project-repository-only-profile";
+import {
   evaluateExternalProjectDatabaseEvidence
 } from "@/lib/qa/external-project-database-evidence";
 import {
@@ -4150,6 +4158,43 @@ async function addExternalProjectCompletionEvidence(input: {
   );
 }
 
+async function addExternalProjectRepositoryOnlyEvidence(input: {
+  profile: ExternalProjectRepositoryOnlyProfile;
+  packet: CompletionPacket;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  const {
+    profile,
+    packet,
+    repoRoot,
+    updates
+  } = input;
+
+  const evidence =
+    await verifyExternalProjectRepositoryOnlyEvidence(
+      profile,
+      repoRoot
+    );
+
+  const externalUpdates =
+    buildExternalProjectRepositoryOnlyAutomaticQaUpdates(
+      {
+        profile,
+        packet,
+        evidence
+      }
+    );
+
+  Object.assign(
+    updates,
+    externalUpdates
+  );
+}
+
 async function persistAutomaticUpdates(input: {
   supabase: SupabaseClient;
   packet: CompletionPacket;
@@ -4587,6 +4632,11 @@ export async function applyAutomaticQaEvidence(
       packet
     );
 
+  const externalProjectRepositoryOnlyProfile =
+    selectExternalProjectRepositoryOnlyProfile(
+      packet
+    );
+
   if (buildTimerProfileApplies(packet)) {
     await addBuildTimerEvidence({
       supabase,
@@ -4636,6 +4686,17 @@ export async function applyAutomaticQaEvidence(
     await addExternalProjectCompletionEvidence({
       profile:
         externalProjectProfile,
+      repoRoot,
+      updates:
+        generic.updates
+    });
+  } else if (
+    externalProjectRepositoryOnlyProfile
+  ) {
+    await addExternalProjectRepositoryOnlyEvidence({
+      profile:
+        externalProjectRepositoryOnlyProfile,
+      packet,
       repoRoot,
       updates:
         generic.updates

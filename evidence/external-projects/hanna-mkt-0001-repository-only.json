@@ -1,0 +1,67 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_and_git_remote_verification",
+    "build_id": "HANNA-MKT-0001",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0001 Campaign Foundation, Claim Governance, and Approval Preflight"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0001-campaign-foundation",
+    "parent_commit": "258b56b2351e065b4de25c78fa003b6eca7c2e0d",
+    "commit": "b93a2d2d15758c0b212d5a18a320b8995b822c53",
+    "tree": "b15699e48bb41c3a9446b50cbf9d5f849c1983f7",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "scripts/campaignctl.py",
+      "tests/test_campaignctl.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "schemas/campaign-package.schema.json",
+      "sha256": "e8174647c193fe51a64ec077a03b33632025df0b6eb290cdee26131eee1cf255"
+    },
+    {
+      "path": "scripts/campaignctl.py",
+      "sha256": "8d1f1b3ad3ebb74efa38f519bbbd78a17ae0cc0547b211d7a00f4deea94c1649"
+    },
+    {
+      "path": "tests/test_campaign_schema.py",
+      "sha256": "737c9589808ef8a47f9285d1bbc857a30e4e44f37c067b041307d0e7a8e1c50c"
+    },
+    {
+      "path": "tests/test_campaignctl.py",
+      "sha256": "568d2decaa1ada64c9efb62ffb55d220a5a8f109e7c203fd47f22c763ed28820"
+    }
+  ],
+  "validation": {
+    "python_unittest_total": 32,
+    "python_unittest_passed": 32,
+    "python_unittest_failed": 0,
+    "canonical_draft_2020_12_schema_verified": true,
+    "cli_validation_passed": true,
+    "approval_checks_blocked_as_expected": true,
+    "blocked_approve_exited_nonzero": true,
+    "campaign_sha_preserved": true,
+    "ledger_sha_preserved": true,
+    "deterministic_preflight_verified": true
+  },
+  "timer": {
+    "session_id": "958194cf-1197-432e-a7a1-287ed7552536",
+    "status": "stopped",
+    "active_seconds": 3695,
+    "manual_correction_event_id": "e9a316e4-ea5e-4fd5-8ecd-d151c8d8d3e9"
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "database_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "secret_values_recorded": false
+  }
+}
