@@ -565,6 +565,41 @@ export async function completeQaRun(formData: FormData) {
 
   const supabase = createAthenaCoreClient();
 
+  const { data: linkedPacket, error: linkedPacketError } =
+    await supabase
+      .from("athena_feature_completion_packets")
+      .select("*")
+      .eq("qa_run_id", runId)
+      .maybeSingle<CompletionPacket>();
+
+  if (linkedPacketError) {
+    redirect(
+      qaErrorUrl(
+        runId,
+        `Automatic QA packet lookup failed: ${linkedPacketError.message}`
+      )
+    );
+  }
+
+  if (linkedPacket) {
+    try {
+      await applyAutomaticQaEvidence({
+        supabase,
+        packet: linkedPacket,
+        qaRunId: runId
+      });
+    } catch (error) {
+      redirect(
+        qaErrorUrl(
+          runId,
+          error instanceof Error
+            ? error.message
+            : "Automatic QA evidence refresh failed before recalculation."
+        )
+      );
+    }
+  }
+
   const { data: checks, error: checksError } =
     await supabase
       .from("athena_qa_check_results")
