@@ -67,7 +67,7 @@ export const HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE = {
       relativePath:
         "schemas/campaign-package.schema.json",
       sha256:
-        "e8174647c193fe51a64ec077a03b33632025df0b6eb290cdee26131eee1cf255",
+        "19c0f8d02ef121cac50d7c5a65df0b8de102cfc62770e1327b28e9bd0b43fb58",
     },
     {
       relativePath:
@@ -92,7 +92,7 @@ export const HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE = {
     relativePath:
       "evidence/external-projects/hanna-mkt-0001-repository-only.json",
     sha256:
-      "75f2fd9465cf4b92062ae1d5ff55da616c48bff9fb4e31cd87463b582ff42000",
+      "17d1e487adb734b4b83f4374dc6b4c55d05893340e365dc6a8ed7f348ddd657f",
     evidenceVersion:
       "athena-external-project-repository-only-v1",
     buildId: "HANNA-MKT-0001",
