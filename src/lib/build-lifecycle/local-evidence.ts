@@ -209,12 +209,37 @@ async function loadCanonicalTarget(
     ],
   );
 
-  const handoffFilenames = [
-    optionalText(intakeMetadata.handoff_filename),
-    optionalText(intake.source_reference),
-  ]
-    .filter(Boolean)
-    .flatMap((value) => [path.basename(value), path.win32.basename(value)])
+  const packageHandoffFilename = optionalText(
+    packageMetadata.handoff_filename,
+  );
+  const intakeHandoffFilename = optionalText(
+    intakeMetadata.handoff_filename,
+  );
+
+  if (
+    packageHandoffFilename &&
+    intakeHandoffFilename &&
+    packageHandoffFilename !== intakeHandoffFilename
+  ) {
+    throw new Error(
+      "Preparation-package and Intake canonical handoff filenames contradict each other.",
+    );
+  }
+
+  const explicitHandoffFilename =
+    packageHandoffFilename ?? intakeHandoffFilename;
+
+  const handoffFilenameSources = explicitHandoffFilename
+    ? [explicitHandoffFilename]
+    : [optionalText(intake.source_reference)].filter(
+        (value): value is string => Boolean(value),
+      );
+
+  const handoffFilenames = handoffFilenameSources
+    .flatMap((value) => [
+      path.basename(value),
+      path.win32.basename(value),
+    ])
     .filter(Boolean);
 
   return {

@@ -1104,6 +1104,21 @@ export default async function IntakePage({
                           </div>
 
                           <div className="grid gap-4 lg:grid-cols-2">
+                            <TextField
+                              name="handoff_version"
+                              label="Canonical handoff version"
+                              placeholder="For example: v1.0"
+                              required
+                            />
+                            <TextField
+                              name="handoff_filename"
+                              label="Canonical handoff filename"
+                              placeholder="Exact filename only; no folder path"
+                              required
+                            />
+                          </div>
+
+                          <div className="grid gap-4 lg:grid-cols-2">
                             <TextAreaField
                               name="acceptance_criteria"
                               label="Acceptance criteria"

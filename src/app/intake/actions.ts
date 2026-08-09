@@ -530,13 +530,22 @@ export async function createAthenaIntakePreparationPackage(
     "proposed_build_title"
   );
   const objective = readText(formData, "objective");
+  const handoffVersion = readText(formData, "handoff_version");
+  const handoffFilename = readText(formData, "handoff_filename");
 
-  if (!intakeId || !projectKey || !packageTitle || !objective) {
+  if (
+    !intakeId ||
+    !projectKey ||
+    !packageTitle ||
+    !objective ||
+    !handoffVersion ||
+    !handoffFilename
+  ) {
     redirect(
       buildIntakeUrl({
         projectKey,
         error:
-          "Intake item, package title, and objective are required."
+          "Intake item, package title, objective, canonical handoff version, and canonical handoff filename are required."
       })
     );
   }
@@ -554,6 +563,18 @@ export async function createAthenaIntakePreparationPackage(
     );
   }
 
+  if (
+    handoffFilename.includes("/") ||
+    handoffFilename.includes("\\")
+  ) {
+    redirect(
+      buildIntakeUrl({
+        projectKey,
+        error:
+          "Canonical handoff filename must be a filename only and cannot contain directory separators."
+      })
+    );
+  }
   const supabase = createAthenaCoreClient();
 
   const { data: intakeItem, error: intakeError } = await supabase
@@ -663,7 +684,9 @@ export async function createAthenaIntakePreparationPackage(
       ),
       target_metadata: {
         created_from: "athena-os-intake-ui",
-        automatic_build_card_created: false
+        automatic_build_card_created: false,
+        handoff_version: handoffVersion,
+        handoff_filename: handoffFilename
       }
     }
   );
