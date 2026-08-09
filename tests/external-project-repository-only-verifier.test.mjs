@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdtempSync,
+  mkdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -25,7 +31,10 @@ function buildFixture() {
   const repo = path.join(root, "external");
   const athenaRoot = path.join(root, "athena");
   mkdirSync(path.join(repo, "scripts"), { recursive: true });
-  mkdirSync(path.join(athenaRoot, "evidence", "external-projects"), { recursive: true });
+  mkdirSync(
+    path.join(athenaRoot, "evidence", "external-projects"),
+    { recursive: true },
+  );
 
   const toolBytes = Buffer.from(
     "# fixture\ncommands = ['validate', 'check-approval', 'approve']\n",
@@ -62,23 +71,12 @@ function buildFixture() {
       repository_clean: true,
       committed_files: ["scripts/tool.py"],
     },
-    files: [
-      {
-        path: "scripts/tool.py",
-        sha256: requiredFileSha,
-      },
-    ],
+    files: [{ path: "scripts/tool.py", sha256: requiredFileSha }],
     validation: {
       python_unittest_total: 1,
       python_unittest_passed: 1,
       python_unittest_failed: 0,
-      canonical_draft_2020_12_schema_verified: true,
-      cli_validation_passed: true,
-      approval_checks_blocked_as_expected: true,
-      blocked_approve_exited_nonzero: true,
-      campaign_sha_preserved: true,
-      ledger_sha_preserved: true,
-      deterministic_preflight_verified: true,
+      fixture_required_validation: true,
     },
     assertions: {
       product_database: "none",
@@ -95,7 +93,11 @@ function buildFixture() {
     "utf8",
   );
   const relativeEvidence = "evidence/external-projects/fixture.json";
-  writeFileSync(path.join(athenaRoot, ...relativeEvidence.split("/")), evidenceBytes);
+  const evidencePath = path.join(
+    athenaRoot,
+    ...relativeEvidence.split("/"),
+  );
+  writeFileSync(evidencePath, evidenceBytes);
 
   const profile = {
     profileKey: "fixture-repository-only",
@@ -113,18 +115,14 @@ function buildFixture() {
       repositoryPathFallbacks: [],
     },
     expectedChangedFiles: ["scripts/tool.py"],
-    requiredFiles: [
-      {
-        relativePath: "scripts/tool.py",
-        sha256: requiredFileSha,
-      },
-    ],
+    requiredFiles: [{ relativePath: "scripts/tool.py", sha256: requiredFileSha }],
     validationEvidence: {
       relativePath: relativeEvidence,
       sha256: sha256(evidenceBytes),
       evidenceVersion: "fixture-repository-only-v1",
       buildId: "FIXTURE-1",
       expectedUnitTestCount: 1,
+      requiredTrueFields: ["fixture_required_validation"],
     },
     callableContract: {
       relativePath: "scripts/tool.py",
@@ -132,7 +130,13 @@ function buildFixture() {
     },
   };
 
-  return { repo, athenaRoot, profile };
+  return {
+    repo,
+    athenaRoot,
+    profile,
+    evidenceObject,
+    evidencePath,
+  };
 }
 
 test("verifies a clean repository-only project end to end", async () => {
@@ -162,5 +166,60 @@ test("fails closed when the external repository becomes dirty", async () => {
         { FIXTURE_EXTERNAL_REPO: fixture.repo },
       ),
     /not clean/,
+  );
+});
+
+test("fails closed when a required committed-file hash is wrong", async () => {
+  const fixture = buildFixture();
+  const badProfile = structuredClone(fixture.profile);
+  badProfile.requiredFiles[0].sha256 = "0".repeat(64);
+
+  await assert.rejects(
+    () =>
+      verifyExternalProjectRepositoryOnlyEvidence(
+        badProfile,
+        fixture.athenaRoot,
+        { FIXTURE_EXTERNAL_REPO: fixture.repo },
+      ),
+    /committed file SHA-256/,
+  );
+});
+
+test("fails closed when canonical validation evidence is missing", async () => {
+  const fixture = buildFixture();
+  unlinkSync(fixture.evidencePath);
+
+  await assert.rejects(
+    () =>
+      verifyExternalProjectRepositoryOnlyEvidence(
+        fixture.profile,
+        fixture.athenaRoot,
+        { FIXTURE_EXTERNAL_REPO: fixture.repo },
+      ),
+    /ENOENT|no such file/i,
+  );
+});
+
+test("fails closed when a profile-required validation assertion is false", async () => {
+  const fixture = buildFixture();
+  const changed = structuredClone(fixture.evidenceObject);
+  changed.validation.fixture_required_validation = false;
+  const changedBytes = Buffer.from(
+    `${JSON.stringify(changed, null, 2)}\n`,
+    "utf8",
+  );
+  writeFileSync(fixture.evidencePath, changedBytes);
+
+  const changedProfile = structuredClone(fixture.profile);
+  changedProfile.validationEvidence.sha256 = sha256(changedBytes);
+
+  await assert.rejects(
+    () =>
+      verifyExternalProjectRepositoryOnlyEvidence(
+        changedProfile,
+        fixture.athenaRoot,
+        { FIXTURE_EXTERNAL_REPO: fixture.repo },
+      ),
+    /Required validation fixture_required_validation/,
   );
 });

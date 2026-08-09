@@ -6,11 +6,11 @@ import {
 } from "../src/lib/qa/external-project-repository-only-evidence-core.ts";
 import {
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
-const profile = HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE;
-
-function evidence() {
+function evidence(profile) {
+  const count = profile.validationEvidence.expectedUnitTestCount;
   return {
     repositoryPath: "C:\\supabase\\hanna-social-operator",
     repositoryRemote: profile.target.repositoryRemote,
@@ -18,16 +18,13 @@ function evidence() {
     repositoryHead: profile.target.repositoryHead,
     repositoryTree: profile.target.repositoryTree,
     repositoryStatusClean: true,
-    trackedIndexSha256:
-      "1".repeat(64),
+    trackedIndexSha256: "1".repeat(64),
     requiredFiles: profile.requiredFiles.map((file) => ({ ...file })),
-    validationEvidenceRelativePath:
-      profile.validationEvidence.relativePath,
-    validationEvidenceSha256:
-      profile.validationEvidence.sha256,
+    validationEvidenceRelativePath: profile.validationEvidence.relativePath,
+    validationEvidenceSha256: profile.validationEvidence.sha256,
     validation: {
-      pythonUnittestTotal: 32,
-      pythonUnittestPassed: 32,
+      pythonUnittestTotal: count,
+      pythonUnittestPassed: count,
       pythonUnittestFailed: 0,
       canonicalDraft202012SchemaVerified: true,
       cliValidationPassed: true,
@@ -38,12 +35,11 @@ function evidence() {
       deterministicPreflightVerified: true,
     },
     callableContractVerified: true,
-    evidenceSha256:
-      "2".repeat(64),
+    evidenceSha256: "2".repeat(64),
   };
 }
 
-function packet(overrides = {}) {
+function packet(profile, overrides = {}) {
   return {
     id: "hanna-packet-fixture",
     project_key: profile.packetIdentity.project_key,
@@ -54,14 +50,7 @@ function packet(overrides = {}) {
   };
 }
 
-test("builds repository-only automatic QA without fabricating database evidence", () => {
-  const updates =
-    buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
-      profile,
-      packet: packet(),
-      evidence: evidence(),
-    });
-
+function assertRepositoryOnlyApplicability(updates) {
   assert.equal(updates.route_or_function_exists.status, "pass");
   assert.equal(updates.terminal_build_clean.status, "pass");
   assert.equal(updates.no_hardcoded_planning_values.status, "pass");
@@ -80,23 +69,60 @@ test("builds repository-only automatic QA without fabricating database evidence"
     );
     assert.equal(update.evidence.product_database, "none");
   }
+}
+
+test("preserves HANNA-MKT-0001 repository-only QA behavior", () => {
+  const profile = HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE;
+  const updates = buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
+    profile,
+    packet: packet(profile),
+    evidence: evidence(profile),
+  });
+
+  assertRepositoryOnlyApplicability(updates);
+  assert.equal(Object.hasOwn(updates, "calculation_verified"), false);
+});
+
+test("builds HANNA-MKT-0002 repository-only QA with deterministic calculation evidence", () => {
+  const profile = HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE;
+  const updates = buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
+    profile,
+    packet: packet(profile),
+    evidence: evidence(profile),
+  });
+
+  assertRepositoryOnlyApplicability(updates);
+  assert.equal(updates.calculation_verified.status, "pass");
+  assert.match(
+    updates.route_or_function_exists.actual_result,
+    /scripts\/knowledgectl\.py/,
+  );
+  assert.match(updates.calculation_verified.actual_result, /52\/52/);
+  assert.equal(
+    updates.calculation_verified.evidence.calculation_source,
+    "profile_validation_evidence",
+  );
 });
 
 test("fails closed when completion packet changed files do not match", () => {
+  const profile = HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE;
   assert.throws(
     () =>
       buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
         profile,
-        packet: packet({ files_changed: ["scripts/campaignctl.py"] }),
-        evidence: evidence(),
+        packet: packet(profile, {
+          files_changed: ["scripts/knowledgectl.py"],
+        }),
+        evidence: evidence(profile),
       }),
     /files_changed does not match/,
   );
 });
 
 test("does not mutate supplied packet or evidence", () => {
-  const inputPacket = packet();
-  const inputEvidence = evidence();
+  const profile = HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE;
+  const inputPacket = packet(profile);
+  const inputEvidence = evidence(profile);
   const beforePacket = structuredClone(inputPacket);
   const beforeEvidence = structuredClone(inputEvidence);
 

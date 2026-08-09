@@ -45,13 +45,13 @@ export type ExternalProjectRepositoryOnlyEvidence = {
     pythonUnittestTotal: number;
     pythonUnittestPassed: number;
     pythonUnittestFailed: number;
-    canonicalDraft202012SchemaVerified: true;
-    cliValidationPassed: true;
-    approvalChecksBlockedAsExpected: true;
-    blockedApproveExitedNonzero: true;
-    campaignShaPreserved: true;
-    ledgerShaPreserved: true;
-    deterministicPreflightVerified: true;
+    canonicalDraft202012SchemaVerified: boolean;
+    cliValidationPassed: boolean;
+    approvalChecksBlockedAsExpected: boolean;
+    blockedApproveExitedNonzero: boolean;
+    campaignShaPreserved: boolean;
+    ledgerShaPreserved: boolean;
+    deterministicPreflightVerified: boolean;
   };
   callableContractVerified: true;
   evidenceSha256: string;
@@ -381,6 +381,10 @@ function parseValidationEvidence(
   assertEqual("Python unit-test passed count", pythonUnittestPassed, pythonUnittestTotal);
   assertEqual("Python unit-test failed count", pythonUnittestFailed, 0);
 
+  for (const field of profile.validationEvidence.requiredTrueFields) {
+    asTrue(validation[field], `Required validation ${field}`);
+  }
+
   const assertions = asRecord(root.assertions, "Repository-only assertions");
   assertEqual("Repository-only product database", assertions.product_database, "none");
   assertEqual("Repository-only database evidence requirement", assertions.database_evidence_required, false);
@@ -394,19 +398,19 @@ function parseValidationEvidence(
     pythonUnittestPassed,
     pythonUnittestFailed,
     canonicalDraft202012SchemaVerified:
-      asTrue(validation.canonical_draft_2020_12_schema_verified, "Draft 2020-12 schema verification"),
+      validation.canonical_draft_2020_12_schema_verified === true,
     cliValidationPassed:
-      asTrue(validation.cli_validation_passed, "CLI validation"),
+      validation.cli_validation_passed === true,
     approvalChecksBlockedAsExpected:
-      asTrue(validation.approval_checks_blocked_as_expected, "Approval blocking validation"),
+      validation.approval_checks_blocked_as_expected === true,
     blockedApproveExitedNonzero:
-      asTrue(validation.blocked_approve_exited_nonzero, "Blocked approve exit validation"),
+      validation.blocked_approve_exited_nonzero === true,
     campaignShaPreserved:
-      asTrue(validation.campaign_sha_preserved, "Campaign SHA preservation"),
+      validation.campaign_sha_preserved === true,
     ledgerShaPreserved:
-      asTrue(validation.ledger_sha_preserved, "Ledger SHA preservation"),
+      validation.ledger_sha_preserved === true,
     deterministicPreflightVerified:
-      asTrue(validation.deterministic_preflight_verified, "Deterministic preflight validation"),
+      validation.deterministic_preflight_verified === true,
   };
 }
 
@@ -567,6 +571,7 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     project_key: packet.project_key,
     module_key: packet.module_key,
     build_session_title: packet.build_session_title,
+    build_id: profile.validationEvidence.buildId,
     product_database: "none",
     repository_remote: evidence.repositoryRemote,
     repository_branch: evidence.repositoryBranch,
@@ -579,22 +584,48 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     required_files: evidence.requiredFiles,
   };
 
+  const buildId = profile.validationEvidence.buildId;
+  const callablePath = profile.callableContract.relativePath;
+  const calculationUpdate: Record<
+    string,
+    ExternalProjectRepositoryOnlyAutomaticQaUpdate
+  > =
+    profile.validationEvidence.resolveCalculationFromValidation === true
+      ? {
+          calculation_verified: update(
+            "pass",
+            `Deterministic repository validation verified ${evidence.validation.pythonUnittestPassed}/${evidence.validation.pythonUnittestTotal} tests with zero failures for ${buildId}.`,
+            "Automatic QA verified the exact repository commit/tree, exact required-file hashes, hash-bound canonical validation evidence, and every profile-required validation assertion. Completion timer hours remain governed separately by the transactional completion workflow.",
+            {
+              ...commonEvidence,
+              calculation_source: "profile_validation_evidence",
+              python_unittest_total: evidence.validation.pythonUnittestTotal,
+              python_unittest_passed: evidence.validation.pythonUnittestPassed,
+              python_unittest_failed: evidence.validation.pythonUnittestFailed,
+              profile_required_validation_fields:
+                profile.validationEvidence.requiredTrueFields,
+            },
+          ),
+        }
+      : {};
+
   return {
+    ...calculationUpdate,
     route_or_function_exists: update(
       "pass",
-      "The governed campaignctl command surface, including validation and approval-preflight commands, exists at the exact committed Hanna repository identity.",
-      "Automatic QA verified the repository HEAD/tree, exact campaignctl.py hash, and required callable-contract tokens without executing a write.",
+      `The governed callable contract ${callablePath} exists at the exact committed external-repository identity for ${buildId}.`,
+      "Automatic QA verified repository HEAD/tree, the exact callable-file SHA-256, and all required callable-contract tokens without executing a write.",
       {
         ...commonEvidence,
-        callable_contract_file: profile.callableContract.relativePath,
+        callable_contract_file: callablePath,
         required_tokens: profile.callableContract.requiredTokens,
         callable_contract_verified: evidence.callableContractVerified,
       },
     ),
     ui_shows_expected_new_fields: update(
       "not_applicable",
-      "HANNA-MKT-0001 contains no user-interface field scope.",
-      "The governed implementation modifies the command-line campaign approval-preflight workflow only.",
+      `${buildId} contains no user-interface field scope.`,
+      "Repository-only automatic QA does not fabricate UI evidence when the governed changed-file contract contains no UI requirement.",
       {
         ...commonEvidence,
         applicability: "no_ui_scope",
@@ -602,8 +633,8 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     database_read_verified: update(
       "not_applicable",
-      "HANNA-MKT-0001 has no product database to read.",
-      "The Hanna repository is explicitly registered as product_database=none; Athena Supabase is control-plane governance only.",
+      `${buildId} has no product database to read.`,
+      "The external repository is explicitly governed as product_database=none; Athena Supabase is control-plane governance only.",
       {
         ...commonEvidence,
         applicability: "repository_only_no_product_database",
@@ -611,7 +642,7 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     database_write_verified: update(
       "not_applicable",
-      "HANNA-MKT-0001 performs no product-database write.",
+      `${buildId} performs no product-database write.`,
       "Automatic QA does not fabricate database-write evidence for repository-only projects.",
       {
         ...commonEvidence,
@@ -620,7 +651,7 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     saved_row_verified: update(
       "not_applicable",
-      "No product-database saved row exists in the HANNA-MKT-0001 scope.",
+      `No product-database saved row exists in the ${buildId} scope.`,
       "Repository persistence is verified through the exact Git commit/tree and required file hashes instead of a database row.",
       {
         ...commonEvidence,
@@ -629,8 +660,8 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     rls_policy_reviewed: update(
       "not_applicable",
-      "No product-database RLS or policy change exists in HANNA-MKT-0001.",
-      "The implementation changes Python repository files only; Athena's control-plane database is not modified by the Hanna feature implementation.",
+      `No product-database RLS or policy change exists in ${buildId}.`,
+      "The governed external-repository implementation has no product-database security scope; Athena's control-plane database is not modified by the product feature.",
       {
         ...commonEvidence,
         applicability: "repository_only_no_database_security_scope",
@@ -638,17 +669,19 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     terminal_build_clean: update(
       "pass",
-      `Governed Hanna validation verified ${evidence.validation.pythonUnittestPassed}/${evidence.validation.pythonUnittestTotal} Python tests, canonical Draft 2020-12 schema validation, CLI validation, deterministic approval blocking, and byte preservation.`,
-      "Automatic QA uses a hash-bound canonical validation evidence file plus exact committed source/test hashes instead of Athena Next.js build logs.",
+      `Governed repository validation verified ${evidence.validation.pythonUnittestPassed}/${evidence.validation.pythonUnittestTotal} Python tests with zero failures for ${buildId}.`,
+      "Automatic QA uses a hash-bound canonical validation-evidence file plus exact committed source/test hashes instead of workstation-only success claims.",
       {
         ...commonEvidence,
         validation: evidence.validation,
+        profile_required_validation_fields:
+          profile.validationEvidence.requiredTrueFields,
       },
     ),
     core_pages_regression_checked: update(
       "not_applicable",
-      "HANNA-MKT-0001 does not modify Athena OS application routes or core pages.",
-      "The exact governed changed-file set contains only Hanna campaignctl.py and its dedicated test file.",
+      `${buildId} does not modify Athena OS application routes or core pages.`,
+      `The exact governed changed-file set contains ${packet.files_changed.length} external-repository paths and no Athena OS route scope.`,
       {
         ...commonEvidence,
         applicability: "external_repository_no_athena_route_scope",
@@ -657,8 +690,8 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
     ),
     no_hardcoded_planning_values: update(
       "pass",
-      "The exact HANNA-MKT-0001 changed-file set is external to Athena OS planning storage and cannot contain an Athena project-module planning-table mutation.",
-      "Automatic QA verified the exact external repository commit and the exact two governed changed paths before overriding the generic Athena-source planning check.",
+      `The exact ${buildId} changed-file set is external to Athena OS planning storage and cannot contain an Athena project-module planning-table mutation.`,
+      `Automatic QA verified the exact external repository commit and all ${packet.files_changed.length} governed changed paths before overriding the generic Athena-source planning check.`,
       {
         ...commonEvidence,
         files_changed: packet.files_changed,

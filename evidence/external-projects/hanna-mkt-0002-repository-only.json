@@ -1,0 +1,97 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_and_git_remote_verification",
+    "build_id": "HANNA-MKT-0002",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0002 Canonical Knowledge Sync and Product Repository Foundation"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0002-knowledge-sync-product-repository",
+    "parent_commit": "b93a2d2d15758c0b212d5a18a320b8995b822c53",
+    "commit": "378ef70c23d20315fc7c2a301d3b8c8370ea693f",
+    "tree": "adf8b25c54acc9193b4bbe910336f5c63aeb661c",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "knowledge/README.md",
+      "knowledge/current.json",
+      "knowledge/snapshots/HANNA-KNOWLEDGE-20260809-001.json",
+      "knowledge/source-registry.json",
+      "products/catalog.json",
+      "schemas/knowledge-snapshot.schema.json",
+      "schemas/product-registry.schema.json",
+      "scripts/knowledgectl.py",
+      "tests/test_knowledgectl.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "knowledge/README.md",
+      "sha256": "85b2ff33b238ed58f75aea87f2934a424f58e7c7c0c8309d68647df976b838a2"
+    },
+    {
+      "path": "knowledge/current.json",
+      "sha256": "ca5a279cfdf0ea8e2b9d8a87bc9f37dd476f4c0f0bf843507741f772f53fc61b"
+    },
+    {
+      "path": "knowledge/snapshots/HANNA-KNOWLEDGE-20260809-001.json",
+      "sha256": "6f13bbbb9a41e9cd316b9959ee0d69adbb4be6edb096a5064c7e13f8a5aabe8a"
+    },
+    {
+      "path": "knowledge/source-registry.json",
+      "sha256": "f5878de537e9cef7c612a3b28113fd82d1bd742415a95dc344f87cf5a765565d"
+    },
+    {
+      "path": "products/catalog.json",
+      "sha256": "e8f8b760135729209e1b7a5ef7f319bcd89fb0790e680dd128383f7248504225"
+    },
+    {
+      "path": "schemas/knowledge-snapshot.schema.json",
+      "sha256": "3a4770a3f417f3eeeafdfbce19b32dd8c8a6087dbfc466ce80a16366e2c56d77"
+    },
+    {
+      "path": "schemas/product-registry.schema.json",
+      "sha256": "9e12379de40105d5304bc7b3b4e5e4f344dd9ad4f84c6cc48e9fe4fcf569652b"
+    },
+    {
+      "path": "scripts/knowledgectl.py",
+      "sha256": "4f3277839cd83152c7cfb27beab195ed5c3b7a4617f66ff1a8393d8c3b23994a"
+    },
+    {
+      "path": "tests/test_knowledgectl.py",
+      "sha256": "8bf97c716ec5352bf739b9abfb76c7bc95634ca8e00dd394bff558d2e0012a14"
+    }
+  ],
+  "validation": {
+    "python_unittest_total": 52,
+    "python_unittest_passed": 52,
+    "python_unittest_failed": 0,
+    "governed_knowledge_validation_passed": true,
+    "focused_mkt_0002_tests_passed": true,
+    "focused_mkt_0002_test_total": 20,
+    "complete_regression_suite_passed": true,
+    "complete_regression_test_total": 52,
+    "mkt_0001_package_regression_passed": true,
+    "eligible_product_context_verified": true,
+    "blocked_product_fail_closed_verified": true,
+    "blocked_product_expected_exit_code": 2,
+    "canonical_utf8_regression_verified": true,
+    "product_count": 6,
+    "drafting_eligible_product_count": 5,
+    "blocked_product_count": 1
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "database_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "secret_values_recorded": false,
+    "external_action_authorized": false,
+    "blocked_product_id": "HANNA-PROD-000005",
+    "blocked_product_reason": "gross_margin_below_60_percent"
+  }
+}
