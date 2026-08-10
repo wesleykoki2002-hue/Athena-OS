@@ -173,9 +173,81 @@ export const HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE = {
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
 
+export const HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0003-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0003 Governed Product-to-Campaign Creative Package Foundation",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0003-product-to-campaign-creative-package",
+    repositoryHead:
+      "986d329aa3df340ce2fbdb98afc80ce1f251d81c",
+    repositoryTree:
+      "a3fe63e4d0a03f3a83448e94fde1c8d7c61f0058",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "products/asset-manifest.json",
+    "schemas/creative-package.schema.json",
+    "schemas/creative-request.schema.json",
+    "schemas/product-asset-manifest.schema.json",
+    "scripts/creativectl.py",
+    "tests/test_creativectl.py",
+  ],
+  requiredFiles: [
+    { relativePath: "products/asset-manifest.json", sha256: "095a5dae7cc832409b333b41860376ff4409796a73d666387a090ba42065d47c" },
+    { relativePath: "schemas/creative-package.schema.json", sha256: "75e224b7bd49bbfed6afc4d96c002b13f7cc8775c76aa2d232b93cebf13c3184" },
+    { relativePath: "schemas/creative-request.schema.json", sha256: "c9b523a432d82c8d43f8ab5ae598a8fef812d391c0a165c113da2a5b9771f5df" },
+    { relativePath: "schemas/product-asset-manifest.schema.json", sha256: "26a2a24339124d57a8b078f1ced67cd404c05ecc051eef187376aca194e26755" },
+    { relativePath: "scripts/creativectl.py", sha256: "2e2a615239f105aff86e541265af5643dcd4569af43e5bfa351261ecc4d8c9d7" },
+    { relativePath: "tests/test_creativectl.py", sha256: "2cd57759f46344effd8b5dc7d201e76545a674b17bf036e4781c9e665253842a" },
+  ],
+  validationEvidence: {
+    relativePath: "evidence/external-projects/hanna-mkt-0003-repository-only.json",
+    sha256: "3d13f98400ae7774da22877bc4c3861a196260c16154472185295b7ea29f6c9b",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0003",
+    expectedUnitTestCount: 88,
+    requiredTrueFields: [
+      "governed_creative_foundation_validation_passed",
+      "focused_mkt_0003_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_campaign_regression_passed",
+      "missing_asset_fail_closed_verified",
+      "blocked_product_fail_closed_verified",
+      "canonical_request_rebinding_verified",
+      "reference_only_source_fail_closed_verified",
+      "source_ledger_binding_verified",
+      "asset_provenance_datetime_validation_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/creativectl.py",
+    requiredTokens: [
+      "validate",
+      "request",
+      "validate-package",
+      "materialize",
+      "external_action_authorized",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(

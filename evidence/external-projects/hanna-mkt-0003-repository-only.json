@@ -1,0 +1,83 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_and_git_remote_verification",
+    "build_id": "HANNA-MKT-0003",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0003 Governed Product-to-Campaign Creative Package Foundation"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0003-product-to-campaign-creative-package",
+    "parent_commit": "378ef70c23d20315fc7c2a301d3b8c8370ea693f",
+    "commit": "986d329aa3df340ce2fbdb98afc80ce1f251d81c",
+    "tree": "a3fe63e4d0a03f3a83448e94fde1c8d7c61f0058",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "products/asset-manifest.json",
+      "schemas/creative-package.schema.json",
+      "schemas/creative-request.schema.json",
+      "schemas/product-asset-manifest.schema.json",
+      "scripts/creativectl.py",
+      "tests/test_creativectl.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "products/asset-manifest.json",
+      "sha256": "095a5dae7cc832409b333b41860376ff4409796a73d666387a090ba42065d47c"
+    },
+    {
+      "path": "schemas/creative-package.schema.json",
+      "sha256": "75e224b7bd49bbfed6afc4d96c002b13f7cc8775c76aa2d232b93cebf13c3184"
+    },
+    {
+      "path": "schemas/creative-request.schema.json",
+      "sha256": "c9b523a432d82c8d43f8ab5ae598a8fef812d391c0a165c113da2a5b9771f5df"
+    },
+    {
+      "path": "schemas/product-asset-manifest.schema.json",
+      "sha256": "26a2a24339124d57a8b078f1ced67cd404c05ecc051eef187376aca194e26755"
+    },
+    {
+      "path": "scripts/creativectl.py",
+      "sha256": "2e2a615239f105aff86e541265af5643dcd4569af43e5bfa351261ecc4d8c9d7"
+    },
+    {
+      "path": "tests/test_creativectl.py",
+      "sha256": "2cd57759f46344effd8b5dc7d201e76545a674b17bf036e4781c9e665253842a"
+    }
+  ],
+  "validation": {
+    "python_unittest_total": 88,
+    "python_unittest_passed": 88,
+    "python_unittest_failed": 0,
+    "governed_creative_foundation_validation_passed": true,
+    "focused_mkt_0003_tests_passed": true,
+    "focused_mkt_0003_test_total": 36,
+    "complete_regression_suite_passed": true,
+    "complete_regression_test_total": 88,
+    "existing_campaign_regression_passed": true,
+    "missing_asset_fail_closed_verified": true,
+    "blocked_product_fail_closed_verified": true,
+    "canonical_request_rebinding_verified": true,
+    "reference_only_source_fail_closed_verified": true,
+    "source_ledger_binding_verified": true,
+    "asset_provenance_datetime_validation_verified": true
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "database_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "secret_values_recorded": false,
+    "external_action_authorized": false,
+    "publication_authorized": false,
+    "verified_canonical_asset_count": 0,
+    "blocked_product_id": "HANNA-PROD-000005",
+    "blocked_product_reason": "gross_margin_below_60_percent"
+  }
+}

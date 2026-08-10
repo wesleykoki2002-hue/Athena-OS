@@ -7,6 +7,7 @@ import {
 import {
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
 function evidence(profile) {
@@ -134,4 +135,25 @@ test("does not mutate supplied packet or evidence", () => {
 
   assert.deepEqual(inputPacket, beforePacket);
   assert.deepEqual(inputEvidence, beforeEvidence);
+});
+
+test("builds HANNA-MKT-0003 repository-only QA with deterministic calculation evidence", () => {
+  const profile = HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE;
+  const updates = buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
+    profile,
+    packet: packet(profile),
+    evidence: evidence(profile),
+  });
+
+  assertRepositoryOnlyApplicability(updates);
+  assert.equal(updates.calculation_verified.status, "pass");
+  assert.match(
+    updates.route_or_function_exists.actual_result,
+    /scripts\/creativectl\.py/,
+  );
+  assert.match(updates.calculation_verified.actual_result, /88\/88/);
+  assert.equal(
+    updates.calculation_verified.evidence.calculation_source,
+    "profile_validation_evidence",
+  );
 });

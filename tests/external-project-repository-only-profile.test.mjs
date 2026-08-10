@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -54,6 +55,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
   for (const profile of [
     HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -100,4 +102,30 @@ test("preserves the exact governed HANNA-MKT-0002 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 52);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/knowledgectl.py");
+});
+
+test("selects the exact governed HANNA-MKT-0003 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0003 identities", () => {
+  const profile = HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE;
+  assert.equal(
+    profile.target.repositoryHead,
+    "986d329aa3df340ce2fbdb98afc80ce1f251d81c",
+  );
+  assert.equal(
+    profile.target.repositoryTree,
+    "a3fe63e4d0a03f3a83448e94fde1c8d7c61f0058",
+  );
+  assert.equal(profile.expectedChangedFiles.length, 6);
+  assert.equal(profile.requiredFiles.length, 6);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 88);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/creativectl.py");
 });
