@@ -244,10 +244,87 @@ export const HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0004-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0004 Governed Product Creative Asset Ingestion and Canonical Mapping",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0004-product-creative-asset-ingestion",
+    repositoryHead:
+      "aa0b2a6409500fb11c85e4798b7bfea038080552",
+    repositoryTree:
+      "bd52c2eb547a355fe87fbd406124bde83b1d77c8",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "schemas/product-asset-history.schema.json",
+    "scripts/assetctl.py",
+    "tests/test_assetctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "schemas/product-asset-history.schema.json",
+      sha256: "1e3f15ac05b49f992ab3033cb8d27ef19e787adec6ae0f1f79c5c32407999be5",
+    },
+    {
+      relativePath: "scripts/assetctl.py",
+      sha256: "a3328794fad8dd3c0ab54f6f06d53e50c507bdc55a021934b55f1926420fe235",
+    },
+    {
+      relativePath: "tests/test_assetctl.py",
+      sha256: "b0a8b8049bfa4dff0edfca8432f82fd263c7526ed92c01a77eedbff26826322f",
+    },
+  ],
+  validationEvidence: {
+    relativePath: "evidence/external-projects/hanna-mkt-0004-repository-only.json",
+    sha256: "66d22332c1326c3840aa144a3fde9fa2ca41da3269fd91d970388cd0d2667683",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0004",
+    expectedUnitTestCount: 102,
+    requiredTrueFields: [
+      "governed_asset_ingestion_state_validation_passed",
+      "focused_mkt_0004_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0003_foundation_regression_passed",
+      "duplicate_binary_fail_closed_verified",
+      "multiple_assets_per_product_verified",
+      "blocked_product_asset_ingestion_separation_verified",
+      "rendered_campaign_source_rejection_verified",
+      "controlled_replacement_supersession_verified",
+      "atomic_ingest_rollback_verified",
+      "atomic_replace_rollback_verified",
+      "historical_binary_retention_verified",
+      "historical_binary_tamper_detection_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/assetctl.py",
+    requiredTokens: [
+      "validate",
+      "ingest",
+      "replace",
+      "campaign_eligibility_evaluated",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(

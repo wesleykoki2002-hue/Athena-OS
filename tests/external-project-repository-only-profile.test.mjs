@@ -5,6 +5,7 @@ import {
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -56,6 +57,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -128,4 +130,34 @@ test("preserves the exact governed HANNA-MKT-0003 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 88);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/creativectl.py");
+});
+
+test("selects the exact governed HANNA-MKT-0004 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0004 identities", () => {
+  const profile = HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE;
+  assert.equal(
+    profile.target.repositoryHead,
+    "aa0b2a6409500fb11c85e4798b7bfea038080552",
+  );
+  assert.equal(
+    profile.target.repositoryTree,
+    "bd52c2eb547a355fe87fbd406124bde83b1d77c8",
+  );
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "schemas/product-asset-history.schema.json",
+    "scripts/assetctl.py",
+    "tests/test_assetctl.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 3);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 102);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/assetctl.py");
 });
