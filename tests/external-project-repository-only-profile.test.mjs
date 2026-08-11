@@ -6,6 +6,7 @@ import {
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -58,6 +59,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -160,4 +162,35 @@ test("preserves the exact governed HANNA-MKT-0004 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 102);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/assetctl.py");
+});
+
+test("selects the exact governed HANNA-MKT-0005 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0005 identities", () => {
+  const profile = HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE;
+  assert.equal(
+    profile.target.repositoryHead,
+    "84101da235923d86b72047bdaa7f5f0b9655568c",
+  );
+  assert.equal(
+    profile.target.repositoryTree,
+    "4af98551588bca90c2e0c9833badc18130e2d59b",
+  );
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "schemas/creative-brief.schema.json",
+    "schemas/marketing-calendar-task.schema.json",
+    "scripts/briefctl.py",
+    "tests/test_briefctl.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 4);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 122);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/briefctl.py");
 });

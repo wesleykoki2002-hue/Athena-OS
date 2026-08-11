@@ -9,6 +9,7 @@ import {
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
 function evidence(profile) {
@@ -174,6 +175,27 @@ test("builds HANNA-MKT-0004 repository-only QA with deterministic calculation ev
     /scripts\/assetctl\.py/,
   );
   assert.match(updates.calculation_verified.actual_result, /102\/102/);
+  assert.equal(
+    updates.calculation_verified.evidence.calculation_source,
+    "profile_validation_evidence",
+  );
+});
+
+test("builds HANNA-MKT-0005 repository-only QA with deterministic calculation evidence", () => {
+  const profile = HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE;
+  const updates = buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
+    profile,
+    packet: packet(profile),
+    evidence: evidence(profile),
+  });
+
+  assertRepositoryOnlyApplicability(updates);
+  assert.equal(updates.calculation_verified.status, "pass");
+  assert.match(
+    updates.route_or_function_exists.actual_result,
+    /scripts\/briefctl\.py/,
+  );
+  assert.match(updates.calculation_verified.actual_result, /122\/122/);
   assert.equal(
     updates.calculation_verified.evidence.calculation_source,
     "profile_validation_evidence",

@@ -320,11 +320,96 @@ export const HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0005-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0005 Governed Marketing Calendar Draft-Queue Intake and Creative Brief Routing",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0005-marketing-calendar-creative-brief-routing",
+    repositoryHead:
+      "84101da235923d86b72047bdaa7f5f0b9655568c",
+    repositoryTree:
+      "4af98551588bca90c2e0c9833badc18130e2d59b",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "schemas/creative-brief.schema.json",
+    "schemas/marketing-calendar-task.schema.json",
+    "scripts/briefctl.py",
+    "tests/test_briefctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "schemas/creative-brief.schema.json",
+      sha256: "35dec727dc48b95d5afed4fbbd2241b1456fbc65a99a733f6f04642895b565e3",
+    },
+    {
+      relativePath: "schemas/marketing-calendar-task.schema.json",
+      sha256: "d7004c2d9917c6057f56ef89576ba8110e038a14ac21ea855b4328637a52b1fd",
+    },
+    {
+      relativePath: "scripts/briefctl.py",
+      sha256: "2e2c606ac65dcab261e76333d73d1312875e83b6a93522adf0d9ce9add1e22ee",
+    },
+    {
+      relativePath: "tests/test_briefctl.py",
+      sha256: "50be83957968f00d73b335e5f74068365033a92b456ded98a275931dbf0ab8fe",
+    },
+  ],
+  validationEvidence: {
+    relativePath: "evidence/external-projects/hanna-mkt-0005-repository-only.json",
+    sha256: "e923b66d391ea194d2b2c71a33e3bb02a60959390c603cac10c4c9d666d924b1",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0005",
+    expectedUnitTestCount: 122,
+    requiredTrueFields: [
+      "governed_marketing_calendar_brief_routing_validation_passed",
+      "focused_mkt_0005_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0004_regressions_passed",
+      "marketing_calendar_task_schema_verified",
+      "contradictory_approval_fail_closed_verified",
+      "explicit_product_identity_binding_verified",
+      "non_product_route_identity_separation_verified",
+      "blocked_product_fail_closed_verified",
+      "missing_asset_fail_closed_verified",
+      "brand_guidelines_reference_only_verified",
+      "external_generation_mutation_boundaries_disabled_verified",
+      "deterministic_brief_hash_binding_verified",
+      "materialization_no_final_creative_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/briefctl.py",
+    requiredTokens: [
+      "validate-task",
+      "build",
+      "validate-brief",
+      "materialize",
+      "product_identity_inference_allowed",
+      "external_action_authorized",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(
