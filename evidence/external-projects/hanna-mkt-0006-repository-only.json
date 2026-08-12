@@ -1,0 +1,92 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_and_git_remote_verification",
+    "build_id": "HANNA-MKT-0006",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0006 Governed AI Creative Draft Generation and Review-Ready Output"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0006-governed-ai-creative-draft-generation",
+    "parent_commit": "84101da235923d86b72047bdaa7f5f0b9655568c",
+    "commit": "693eaad47793e3ca5717f891158464eda322ca77",
+    "tree": "aa6fc586640900dd0c5b7810a6a2decfc157124b",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "requirements.txt",
+      "schemas/creative-review-draft.schema.json",
+      "scripts/draftctl.py",
+      "tests/test_draftctl.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "requirements.txt",
+      "sha256": "1a0be5450883bd7b53676f9ef2be1d8d406e4cb8a4e521e3e58cd20f3bc9006a"
+    },
+    {
+      "path": "schemas/creative-review-draft.schema.json",
+      "sha256": "2ce45f27145dee42bf782e480a456a339562dfda647e3468e4f255dbe4b83c30"
+    },
+    {
+      "path": "scripts/draftctl.py",
+      "sha256": "e662d8a7b8fb67206c16f94492f56569fab571820118d2d7aa9578668631582c"
+    },
+    {
+      "path": "tests/test_draftctl.py",
+      "sha256": "ae7bfa72333c7aa12f69ac8f70960d39a12c2cbd02618e06f8ac0943306fb8b4"
+    }
+  ],
+  "validation": {
+    "python_unittest_total": 146,
+    "python_unittest_passed": 146,
+    "python_unittest_failed": 0,
+    "governed_ai_creative_review_draft_generation_validation_passed": true,
+    "focused_mkt_0006_tests_passed": true,
+    "focused_mkt_0006_test_total": 24,
+    "complete_regression_suite_passed": true,
+    "complete_regression_test_total": 146,
+    "existing_mkt_0001_0005_regressions_passed": true,
+    "creative_review_draft_schema_verified": true,
+    "exact_mkt_0005_brief_binding_verified": true,
+    "existing_draft_fail_closed_verified": true,
+    "draft_ready_regeneration_blocked_verified": true,
+    "explicit_product_identity_binding_preserved_verified": true,
+    "product_text_generation_without_visual_rendering_verified": true,
+    "reference_only_source_claim_support_blocked_verified": true,
+    "non_public_safe_generated_claim_blocked_verified": true,
+    "deterministic_invocation_identity_verified": true,
+    "structured_output_contract_verified": true,
+    "provider_tools_disabled_verified": true,
+    "provider_storage_disabled_verified": true,
+    "provider_background_disabled_verified": true,
+    "provider_automatic_retries_disabled_verified": true,
+    "duplicate_materialization_provider_call_prevented_verified": true,
+    "persisted_claim_source_support_revalidation_verified": true,
+    "atomic_review_draft_materialization_verified": true,
+    "review_draft_overwrite_blocked_verified": true
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "database_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "secret_values_recorded": false,
+    "openai_live_provider_call_performed": false,
+    "image_generation_authorized": false,
+    "creative_rendering_authorized": false,
+    "approval_mutation_authorized": false,
+    "external_action_authorized": false,
+    "publication_authorized": false,
+    "notion_writeback_authorized": false,
+    "shopify_write_authorized": false,
+    "beautydna_write_authorized": false,
+    "product_identity_inference_allowed": false,
+    "brand_guidelines_reference_only": true,
+    "hermes_used": false
+  }
+}

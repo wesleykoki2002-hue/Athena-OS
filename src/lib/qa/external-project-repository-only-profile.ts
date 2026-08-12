@@ -404,12 +404,111 @@ export const HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0006-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0006 Governed AI Creative Draft Generation and Review-Ready Output",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0006-governed-ai-creative-draft-generation",
+    repositoryHead:
+      "693eaad47793e3ca5717f891158464eda322ca77",
+    repositoryTree:
+      "aa6fc586640900dd0c5b7810a6a2decfc157124b",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "requirements.txt",
+    "schemas/creative-review-draft.schema.json",
+    "scripts/draftctl.py",
+    "tests/test_draftctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "requirements.txt",
+      sha256: "1a0be5450883bd7b53676f9ef2be1d8d406e4cb8a4e521e3e58cd20f3bc9006a",
+    },
+    {
+      relativePath: "schemas/creative-review-draft.schema.json",
+      sha256: "2ce45f27145dee42bf782e480a456a339562dfda647e3468e4f255dbe4b83c30",
+    },
+    {
+      relativePath: "scripts/draftctl.py",
+      sha256: "e662d8a7b8fb67206c16f94492f56569fab571820118d2d7aa9578668631582c",
+    },
+    {
+      relativePath: "tests/test_draftctl.py",
+      sha256: "ae7bfa72333c7aa12f69ac8f70960d39a12c2cbd02618e06f8ac0943306fb8b4",
+    },
+  ],
+  validationEvidence: {
+    relativePath:
+      "evidence/external-projects/hanna-mkt-0006-repository-only.json",
+    sha256: "205fb5bc6e412901cca60b875708cf890d6794e79debb6eb9d2a7c7f26bec5a5",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0006",
+    expectedUnitTestCount: 146,
+    requiredTrueFields: [
+      "governed_ai_creative_review_draft_generation_validation_passed",
+      "focused_mkt_0006_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0005_regressions_passed",
+      "creative_review_draft_schema_verified",
+      "exact_mkt_0005_brief_binding_verified",
+      "existing_draft_fail_closed_verified",
+      "draft_ready_regeneration_blocked_verified",
+      "explicit_product_identity_binding_preserved_verified",
+      "product_text_generation_without_visual_rendering_verified",
+      "reference_only_source_claim_support_blocked_verified",
+      "non_public_safe_generated_claim_blocked_verified",
+      "deterministic_invocation_identity_verified",
+      "structured_output_contract_verified",
+      "provider_tools_disabled_verified",
+      "provider_storage_disabled_verified",
+      "provider_background_disabled_verified",
+      "provider_automatic_retries_disabled_verified",
+      "duplicate_materialization_provider_call_prevented_verified",
+      "persisted_claim_source_support_revalidation_verified",
+      "atomic_review_draft_materialization_verified",
+      "review_draft_overwrite_blocked_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/draftctl.py",
+    requiredTokens: [
+      "generate",
+      "validate",
+      "materialize",
+      "OpenAIResponsesProvider",
+      "existing_marketing_calendar_draft_content_blocks_generation",
+      "store=False",
+      "background=False",
+      "tools=[]",
+      "max_retries=0",
+      "publication_authorized",
+      "external_action_authorized",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0003_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(
