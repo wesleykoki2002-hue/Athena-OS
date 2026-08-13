@@ -1,0 +1,95 @@
+{
+    "evidence_version":  "athena-external-project-repository-only-v1",
+    "source":  {
+                   "method":  "governed_local_validation_and_git_remote_verification",
+                   "build_id":  "HANNA-MKT-0007",
+                   "project_key":  "hanna-commerce-os",
+                   "module_key":  "agent-workflows",
+                   "build_session_title":  "HANNA-MKT-0007 Governed Marketing Calendar Review-Draft Writeback and Review Routing"
+               },
+    "repository":  {
+                       "remote":  "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+                       "branch":  "feature/hanna-mkt-0007-governed-marketing-calendar-review-draft-writeback",
+                       "parent_commit":  "693eaad47793e3ca5717f891158464eda322ca77",
+                       "commit":  "938cd2bae20ef706f70ad15e5e8ce89a97d43743",
+                       "tree":  "76f984698be9730bc0d8432dcd1a5fd1d1877749",
+                       "remote_commit_verified":  true,
+                       "repository_clean":  true,
+                       "committed_files":  [
+                                               "schemas/marketing-calendar-writeback.schema.json",
+                                               "schemas/marketing-calendar-writeback-intent.schema.json",
+                                               "scripts/writebackctl.py",
+                                               "tests/test_writebackctl.py"
+                                           ]
+                   },
+    "files":  [
+                  {
+                      "path":  "schemas/marketing-calendar-writeback.schema.json",
+                      "sha256":  "43c5296dbbf85f5e19c45a79276cb78104d9a5f1f10c4e672c6cf4e1e9597805"
+                  },
+                  {
+                      "path":  "schemas/marketing-calendar-writeback-intent.schema.json",
+                      "sha256":  "4ccb723ac23d5e90405181e7f488dfb9cbd3c9374447272247e28574946b0bd1"
+                  },
+                  {
+                      "path":  "scripts/writebackctl.py",
+                      "sha256":  "b084839da8cc58417d9ef53625a280310b3875475932a2bfae4b2806910b5d12"
+                  },
+                  {
+                      "path":  "tests/test_writebackctl.py",
+                      "sha256":  "206c2d3a7bb3d04191bccf8bec935804016637ae5a9fc829c520f6ae1fc543a8"
+                  }
+              ],
+    "validation":  {
+                       "python_unittest_total":  173,
+                       "python_unittest_passed":  173,
+                       "python_unittest_failed":  0,
+                       "governed_marketing_calendar_review_draft_writeback_validation_passed":  true,
+                       "focused_mkt_0007_tests_passed":  true,
+                       "focused_mkt_0007_test_total":  27,
+                       "complete_regression_suite_passed":  true,
+                       "complete_regression_test_total":  173,
+                       "existing_mkt_0001_0006_regressions_passed":  true,
+                       "writeback_evidence_schema_verified":  true,
+                       "writeback_intent_schema_verified":  true,
+                       "exact_mkt_0005_record_binding_verified":  true,
+                       "exact_mkt_0006_review_draft_binding_verified":  true,
+                       "draft_needed_to_draft_ready_only_verified":  true,
+                       "blocked_statuses_fail_closed_verified":  true,
+                       "substantive_draft_collision_blocked_verified":  true,
+                       "source_snapshot_drift_detection_verified":  true,
+                       "concurrent_change_detection_verified":  true,
+                       "deterministic_operation_identity_verified":  true,
+                       "duplicate_repository_evidence_blocked_verified":  true,
+                       "duplicate_external_state_detected_verified":  true,
+                       "ambiguous_transport_reread_verified":  true,
+                       "automatic_patch_retry_disabled_verified":  true,
+                       "read_after_write_verified":  true,
+                       "unrelated_property_mutation_detection_verified":  true,
+                       "rich_text_chunking_without_truncation_verified":  true,
+                       "notion_api_contract_and_secret_redaction_verified":  true,
+                       "exact_record_authorization_verified":  true,
+                       "prewrite_intent_persisted_before_external_mutation_verified":  true,
+                       "verified_external_write_recovery_without_second_patch_verified":  true,
+                       "pending_unapplied_intent_no_automatic_retry_verified":  true,
+                       "ai_regeneration_forbidden_during_writeback_verified":  true
+                   },
+    "assertions":  {
+                       "product_database":  "none",
+                       "database_evidence_required":  false,
+                       "repository_write_performed_by_automatic_qa":  false,
+                       "database_write_performed_by_automatic_qa":  false,
+                       "manual_qa_pass_used":  false,
+                       "secret_values_recorded":  false,
+                       "live_notion_mutation_performed":  false,
+                       "openai_live_provider_call_performed":  false,
+                       "approval_mutation_authorized":  false,
+                       "publication_authorized":  false,
+                       "scheduling_authorized":  false,
+                       "ai_regeneration_authorized":  false,
+                       "automatic_patch_retry_authorized":  false,
+                       "exact_record_authorization_required":  true,
+                       "read_after_write_required":  true,
+                       "hermes_used":  false
+                   }
+}

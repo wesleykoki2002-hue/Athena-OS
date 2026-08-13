@@ -502,6 +502,111 @@ export const HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0007-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0007 Governed Marketing Calendar Review-Draft Writeback and Review Routing",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0007-governed-marketing-calendar-review-draft-writeback",
+    repositoryHead:
+      "938cd2bae20ef706f70ad15e5e8ce89a97d43743",
+    repositoryTree:
+      "76f984698be9730bc0d8432dcd1a5fd1d1877749",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "schemas/marketing-calendar-writeback-intent.schema.json",
+    "schemas/marketing-calendar-writeback.schema.json",
+    "scripts/writebackctl.py",
+    "tests/test_writebackctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "schemas/marketing-calendar-writeback-intent.schema.json",
+      sha256: "4ccb723ac23d5e90405181e7f488dfb9cbd3c9374447272247e28574946b0bd1",
+    },
+    {
+      relativePath: "schemas/marketing-calendar-writeback.schema.json",
+      sha256: "43c5296dbbf85f5e19c45a79276cb78104d9a5f1f10c4e672c6cf4e1e9597805",
+    },
+    {
+      relativePath: "scripts/writebackctl.py",
+      sha256: "b084839da8cc58417d9ef53625a280310b3875475932a2bfae4b2806910b5d12",
+    },
+    {
+      relativePath: "tests/test_writebackctl.py",
+      sha256: "206c2d3a7bb3d04191bccf8bec935804016637ae5a9fc829c520f6ae1fc543a8",
+    },
+  ],
+  validationEvidence: {
+    relativePath:
+      "evidence/external-projects/hanna-mkt-0007-repository-only.json",
+    sha256: "b97852cfb21a63d9ca19dc3e8b6ebdd810b8f2dcb8e09076e29e02569c13cfb7",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0007",
+    expectedUnitTestCount: 173,
+    requiredTrueFields: [
+      "governed_marketing_calendar_review_draft_writeback_validation_passed",
+      "focused_mkt_0007_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0006_regressions_passed",
+      "writeback_evidence_schema_verified",
+      "writeback_intent_schema_verified",
+      "exact_mkt_0005_record_binding_verified",
+      "exact_mkt_0006_review_draft_binding_verified",
+      "draft_needed_to_draft_ready_only_verified",
+      "blocked_statuses_fail_closed_verified",
+      "substantive_draft_collision_blocked_verified",
+      "source_snapshot_drift_detection_verified",
+      "concurrent_change_detection_verified",
+      "deterministic_operation_identity_verified",
+      "duplicate_repository_evidence_blocked_verified",
+      "duplicate_external_state_detected_verified",
+      "ambiguous_transport_reread_verified",
+      "automatic_patch_retry_disabled_verified",
+      "read_after_write_verified",
+      "unrelated_property_mutation_detection_verified",
+      "rich_text_chunking_without_truncation_verified",
+      "notion_api_contract_and_secret_redaction_verified",
+      "exact_record_authorization_verified",
+      "prewrite_intent_persisted_before_external_mutation_verified",
+      "verified_external_write_recovery_without_second_patch_verified",
+      "pending_unapplied_intent_no_automatic_retry_verified",
+      "ai_regeneration_forbidden_during_writeback_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/writebackctl.py",
+    requiredTokens: [
+      "preflight_writeback",
+      "apply_writeback",
+      "NotionRESTProvider",
+      "NOTION_API_VERSION",
+      "Draft Needed",
+      "Draft Ready",
+      "exact_target_record_authorization_required",
+      "writeback_operation_already_applied",
+      "writeback_intent_unapplied_no_automatic_retry",
+      "notion_page_changed_during_prewrite_verification",
+      "notion_write_transport_ambiguous_unapplied",
+      "automatic_retry_performed",
+      "read_after_write_verified",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
@@ -509,6 +614,7 @@ const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectReposit
   HANNA_MKT_0004_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(
