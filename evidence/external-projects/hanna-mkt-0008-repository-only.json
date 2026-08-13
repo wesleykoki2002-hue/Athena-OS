@@ -1,0 +1,108 @@
+{
+    "evidence_version":  "athena-external-project-repository-only-v1",
+    "source":  {
+                   "method":  "governed_local_validation_and_git_remote_verification",
+                   "build_id":  "HANNA-MKT-0008",
+                   "project_key":  "hanna-commerce-os",
+                   "module_key":  "agent-workflows",
+                   "build_session_title":  "HANNA-MKT-0008 Governed Marketing Review Decision and Approval Boundary"
+               },
+    "repository":  {
+                       "remote":  "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+                       "branch":  "feature/hanna-mkt-0008-governed-marketing-review-decision-approval-boundary",
+                       "parent_commit":  "938cd2bae20ef706f70ad15e5e8ce89a97d43743",
+                       "commit":  "fb062179e432ad08648011dafc13cc628f21f68f",
+                       "tree":  "6fba368faacc6e916e0d9e25685ea72ec27c924a",
+                       "remote_commit_verified":  true,
+                       "repository_clean":  true,
+                       "committed_files":  [
+                                               "schemas/marketing-review-approval-evidence.schema.json",
+                                               "schemas/marketing-review-approval-intent.schema.json",
+                                               "schemas/marketing-review-decision.schema.json",
+                                               "scripts/reviewctl.py",
+                                               "tests/test_reviewctl.py"
+                                           ]
+                   },
+    "files":  [
+                  {
+                      "path":  "schemas/marketing-review-approval-evidence.schema.json",
+                      "sha256":  "e212a8217758b12fb36a11ac98acccd28f0e2f07186f66c505742542f4c2ab36"
+                  },
+                  {
+                      "path":  "schemas/marketing-review-approval-intent.schema.json",
+                      "sha256":  "d2d6ed502f997c1f1837aa8484de6ec52aece82f94ba89d9645476b7c3c764db"
+                  },
+                  {
+                      "path":  "schemas/marketing-review-decision.schema.json",
+                      "sha256":  "2531ab2810a52ae8c6827da98f9e6b4ab0cd4f39633b6e89a394283c5bed7cd2"
+                  },
+                  {
+                      "path":  "scripts/reviewctl.py",
+                      "sha256":  "150f287feb2c6e1da3700b9479a5c4d68f2088e77b939b3f8c6cd677a04e9d2f"
+                  },
+                  {
+                      "path":  "tests/test_reviewctl.py",
+                      "sha256":  "d131c89f9a63e5c838395e285505ff3c07c9d51a22d029069e25034db39177ad"
+                  }
+              ],
+    "validation":  {
+                       "python_unittest_total":  198,
+                       "python_unittest_passed":  198,
+                       "python_unittest_failed":  0,
+                       "governed_marketing_review_decision_approval_boundary_validation_passed":  true,
+                       "focused_mkt_0008_tests_passed":  true,
+                       "focused_mkt_0008_test_total":  25,
+                       "complete_regression_suite_passed":  true,
+                       "complete_regression_test_total":  198,
+                       "existing_mkt_0001_0007_regressions_passed":  true,
+                       "review_decision_schema_verified":  true,
+                       "approval_intent_schema_verified":  true,
+                       "approval_evidence_schema_verified":  true,
+                       "exact_mkt_0005_brief_binding_verified":  true,
+                       "exact_mkt_0006_review_draft_binding_verified":  true,
+                       "exact_mkt_0007_writeback_binding_verified":  true,
+                       "authorized_reviewer_binding_verified":  true,
+                       "approve_reject_revise_decisions_verified":  true,
+                       "reject_revise_no_external_mutation_verified":  true,
+                       "unsafe_claim_blocks_approve_verified":  true,
+                       "deterministic_decision_identity_verified":  true,
+                       "immutable_decision_no_overwrite_verified":  true,
+                       "rehashed_writeback_tamper_fail_closed_verified":  true,
+                       "draft_ready_and_approved_false_prerequisite_verified":  true,
+                       "prewrite_intent_persisted_before_approval_mutation_verified":  true,
+                       "prewrite_drift_detection_verified":  true,
+                       "ambiguous_transport_reread_verified":  true,
+                       "conflict_409_reconciliation_verified":  true,
+                       "automatic_patch_retry_disabled_verified":  true,
+                       "pending_intent_recovery_without_second_patch_verified":  true,
+                       "pending_unapplied_intent_no_automatic_retry_verified":  true,
+                       "read_after_write_verified":  true,
+                       "unrelated_property_mutation_detection_verified":  true,
+                       "exact_status_approved_property_scope_verified":  true,
+                       "real_rest_adapter_scope_verified":  true,
+                       "publication_external_action_separation_verified":  true,
+                       "secret_scan_passed":  true,
+                       "live_smoke_blocked_no_exact_safe_target_verified":  true
+                   },
+    "assertions":  {
+                       "product_database":  "none",
+                       "database_evidence_required":  false,
+                       "repository_write_performed_by_automatic_qa":  false,
+                       "database_write_performed_by_automatic_qa":  false,
+                       "manual_qa_pass_used":  false,
+                       "secret_values_recorded":  false,
+                       "live_notion_mutation_performed":  false,
+                       "live_smoke_status":  "blocked_no_exact_safe_target",
+                       "live_safe_target_verified":  false,
+                       "notion_live_smoke_required_for_completion":  false,
+                       "publication_authorized":  false,
+                       "scheduling_authorized":  false,
+                       "external_action_authorized":  false,
+                       "ai_regeneration_authorized":  false,
+                       "creative_rendering_authorized":  false,
+                       "automatic_patch_retry_authorized":  false,
+                       "exact_record_authorization_required":  true,
+                       "read_after_write_required":  true,
+                       "hermes_used":  false
+                   }
+}

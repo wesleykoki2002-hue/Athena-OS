@@ -9,6 +9,7 @@ import {
   HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -64,6 +65,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -254,4 +256,29 @@ test("preserves the exact governed HANNA-MKT-0007 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 173);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/writebackctl.py");
+});
+test("selects the exact governed HANNA-MKT-0008 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0008 identities", () => {
+  const profile = HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE;
+  assert.equal(profile.target.repositoryHead, "fb062179e432ad08648011dafc13cc628f21f68f");
+  assert.equal(profile.target.repositoryTree, "6fba368faacc6e916e0d9e25685ea72ec27c924a");
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "schemas/marketing-review-approval-evidence.schema.json",
+    "schemas/marketing-review-approval-intent.schema.json",
+    "schemas/marketing-review-decision.schema.json",
+    "scripts/reviewctl.py",
+    "tests/test_reviewctl.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 5);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 198);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/reviewctl.py");
 });

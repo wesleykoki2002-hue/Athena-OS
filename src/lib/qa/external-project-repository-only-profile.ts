@@ -607,6 +607,125 @@ export const HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0008-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0008 Governed Marketing Review Decision and Approval Boundary",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0008-governed-marketing-review-decision-approval-boundary",
+    repositoryHead:
+      "fb062179e432ad08648011dafc13cc628f21f68f",
+    repositoryTree:
+      "6fba368faacc6e916e0d9e25685ea72ec27c924a",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "schemas/marketing-review-approval-evidence.schema.json",
+    "schemas/marketing-review-approval-intent.schema.json",
+    "schemas/marketing-review-decision.schema.json",
+    "scripts/reviewctl.py",
+    "tests/test_reviewctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "schemas/marketing-review-approval-evidence.schema.json",
+      sha256: "e212a8217758b12fb36a11ac98acccd28f0e2f07186f66c505742542f4c2ab36",
+    },
+    {
+      relativePath: "schemas/marketing-review-approval-intent.schema.json",
+      sha256: "d2d6ed502f997c1f1837aa8484de6ec52aece82f94ba89d9645476b7c3c764db",
+    },
+    {
+      relativePath: "schemas/marketing-review-decision.schema.json",
+      sha256: "2531ab2810a52ae8c6827da98f9e6b4ab0cd4f39633b6e89a394283c5bed7cd2",
+    },
+    {
+      relativePath: "scripts/reviewctl.py",
+      sha256: "150f287feb2c6e1da3700b9479a5c4d68f2088e77b939b3f8c6cd677a04e9d2f",
+    },
+    {
+      relativePath: "tests/test_reviewctl.py",
+      sha256: "d131c89f9a63e5c838395e285505ff3c07c9d51a22d029069e25034db39177ad",
+    },
+  ],
+  validationEvidence: {
+    relativePath:
+      "evidence/external-projects/hanna-mkt-0008-repository-only.json",
+    sha256: "aa29adc5ef2dbf7606a3a376d45fd5f0dafb4aa117b4e913e98bcbe9bbcd323f",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0008",
+    expectedUnitTestCount: 198,
+    requiredTrueFields: [
+      "governed_marketing_review_decision_approval_boundary_validation_passed",
+      "focused_mkt_0008_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0007_regressions_passed",
+      "review_decision_schema_verified",
+      "approval_intent_schema_verified",
+      "approval_evidence_schema_verified",
+      "exact_mkt_0005_brief_binding_verified",
+      "exact_mkt_0006_review_draft_binding_verified",
+      "exact_mkt_0007_writeback_binding_verified",
+      "authorized_reviewer_binding_verified",
+      "approve_reject_revise_decisions_verified",
+      "reject_revise_no_external_mutation_verified",
+      "unsafe_claim_blocks_approve_verified",
+      "deterministic_decision_identity_verified",
+      "immutable_decision_no_overwrite_verified",
+      "rehashed_writeback_tamper_fail_closed_verified",
+      "draft_ready_and_approved_false_prerequisite_verified",
+      "prewrite_intent_persisted_before_approval_mutation_verified",
+      "prewrite_drift_detection_verified",
+      "ambiguous_transport_reread_verified",
+      "conflict_409_reconciliation_verified",
+      "automatic_patch_retry_disabled_verified",
+      "pending_intent_recovery_without_second_patch_verified",
+      "pending_unapplied_intent_no_automatic_retry_verified",
+      "read_after_write_verified",
+      "unrelated_property_mutation_detection_verified",
+      "exact_status_approved_property_scope_verified",
+      "real_rest_adapter_scope_verified",
+      "publication_external_action_separation_verified",
+      "secret_scan_passed",
+      "live_smoke_blocked_no_exact_safe_target_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/reviewctl.py",
+    requiredTokens: [
+      "preflight",
+      "record",
+      "preflight-approval",
+      "apply-approval",
+      "ApprovalNotionRESTProvider",
+      "prepare_approval_transition",
+      "preflight_approval_transition",
+      "apply_approval_transition",
+      "Draft Ready",
+      "Approved",
+      "approval_property_scope_invalid",
+      "approval_intent_unapplied_no_automatic_retry",
+      "approval_write_transport_ambiguous_unapplied",
+      "automatic_retry_performed",
+      "read_after_write_verified",
+      "publication_authorized",
+      "external_action_authorized",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
@@ -615,6 +734,7 @@ const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectReposit
   HANNA_MKT_0005_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(
