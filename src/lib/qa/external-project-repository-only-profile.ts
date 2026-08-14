@@ -34,6 +34,10 @@ export type ExternalProjectRepositoryOnlyProfile = {
     relativePath: string;
     requiredTokens: readonly string[];
   };
+  uiContract?: {
+    relativePath: string;
+    requiredTokens: readonly string[];
+  };
 };
 
 export const HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE = {

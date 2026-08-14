@@ -54,6 +54,7 @@ export type ExternalProjectRepositoryOnlyEvidence = {
     deterministicPreflightVerified: boolean;
   };
   callableContractVerified: true;
+  uiContractVerified: true | null;
   evidenceSha256: string;
 };
 
@@ -502,6 +503,45 @@ export async function verifyExternalProjectRepositoryOnlyEvidence(
     }
   }
 
+  let uiContractVerified: true | null = null;
+
+  if (profile.uiContract) {
+    const uiContractFile = profile.requiredFiles.find(
+      (file) =>
+        file.relativePath === profile.uiContract?.relativePath,
+    );
+
+    if (!uiContractFile) {
+      throw new Error(
+        "UI contract file is not part of the required-file profile.",
+      );
+    }
+
+    const uiContractBytes = committedFileBytes.get(
+      profile.uiContract.relativePath,
+    );
+
+    if (!uiContractBytes) {
+      throw new Error(
+        "UI contract committed bytes are unavailable.",
+      );
+    }
+
+    const uiContractContent = uiContractBytes.toString(
+      "utf8",
+    );
+
+    for (const token of profile.uiContract.requiredTokens) {
+      if (!uiContractContent.includes(token)) {
+        throw new Error(
+          `UI contract token is missing: ${token}`,
+        );
+      }
+    }
+
+    uiContractVerified = true;
+  }
+
   const evidencePath = safeAthenaEvidencePath(
     athenaRepoRoot,
     profile.validationEvidence.relativePath,
@@ -529,6 +569,9 @@ export async function verifyExternalProjectRepositoryOnlyEvidence(
       validationEvidenceSha256,
       validation,
       callableContractVerified: true,
+      ...(profile.uiContract
+        ? { uiContractVerified }
+        : {}),
     }),
   );
 
@@ -545,6 +588,7 @@ export async function verifyExternalProjectRepositoryOnlyEvidence(
     validationEvidenceSha256,
     validation,
     callableContractVerified: true,
+    uiContractVerified,
     evidenceSha256,
   };
 }
@@ -622,15 +666,31 @@ export function buildExternalProjectRepositoryOnlyAutomaticQaUpdates(input: {
         callable_contract_verified: evidence.callableContractVerified,
       },
     ),
-    ui_shows_expected_new_fields: update(
-      "not_applicable",
-      `${buildId} contains no user-interface field scope.`,
-      "Repository-only automatic QA does not fabricate UI evidence when the governed changed-file contract contains no UI requirement.",
-      {
-        ...commonEvidence,
-        applicability: "no_ui_scope",
-      },
-    ),
+    ui_shows_expected_new_fields: profile.uiContract
+      ? update(
+          "pass",
+          `The governed UI contract ${profile.uiContract.relativePath} exists at the exact committed external-repository identity for ${buildId}.`,
+          "Automatic QA verified the exact committed UI file through the required-file SHA-256 profile and every required UI contract token.",
+          {
+            ...commonEvidence,
+            applicability: "repository_only_ui_scope",
+            ui_contract_file:
+              profile.uiContract.relativePath,
+            required_tokens:
+              profile.uiContract.requiredTokens,
+            ui_contract_verified:
+              evidence.uiContractVerified,
+          },
+        )
+      : update(
+          "not_applicable",
+          `${buildId} contains no user-interface field scope.`,
+          "Repository-only automatic QA does not fabricate UI evidence when the governed changed-file contract contains no UI requirement.",
+          {
+            ...commonEvidence,
+            applicability: "no_ui_scope",
+          },
+        ),
     database_read_verified: update(
       "not_applicable",
       `${buildId} has no product database to read.`,
