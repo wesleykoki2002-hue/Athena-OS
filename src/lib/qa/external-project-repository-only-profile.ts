@@ -726,6 +726,115 @@ export const HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0009-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0009 Governed Approved Creative Render Authorization and Final Campaign Package",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0009-governed-approved-creative-render-authorization-final-campaign-package",
+    repositoryHead:
+      "0eba50ba77e5c98b0baa901507f0f0a4b1dd9a69",
+    repositoryTree:
+      "8be192be3ead4bbedf5b03a285f8106b0dfbe363",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "schemas/creative-render-authorization.schema.json",
+    "schemas/final-campaign-package.schema.json",
+    "scripts/render_carousel.py",
+    "scripts/renderctl.py",
+    "tests/test_renderctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "schemas/creative-render-authorization.schema.json",
+      sha256: "3ce2a838934538ce43e0a7f929be12a66ba6daae05e26ca162e81458872895ae",
+    },
+    {
+      relativePath: "schemas/final-campaign-package.schema.json",
+      sha256: "6cb9e3c7bb459a921fb2b984b37266394f509b91080147a6e759915fc9288dd6",
+    },
+    {
+      relativePath: "scripts/render_carousel.py",
+      sha256: "b387a11e1b6157c4f051f25e87ec7f87505463f22ea2e5cee5aae6cecebc1eee",
+    },
+    {
+      relativePath: "scripts/renderctl.py",
+      sha256: "0e88990b89e7fea97097555e12a0b69203dfc357ab68276a85201c481f0eda1b",
+    },
+    {
+      relativePath: "tests/test_renderctl.py",
+      sha256: "64a1480667fd22edfb3df007df02283c0c2710e9f1c4ee96128b1e2f3a3f86f8",
+    },
+  ],
+  validationEvidence: {
+    relativePath:
+      "evidence/external-projects/hanna-mkt-0009-repository-only.json",
+    sha256: "c31852b97d0e6a8be14298c4854e9c93bdc1233fed2ec511344d583a7a3cb528",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0009",
+    expectedUnitTestCount: 215,
+    requiredTrueFields: [
+      "governed_approved_creative_render_authorization_final_package_validation_passed",
+      "focused_mkt_0009_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0008_regressions_passed",
+      "render_authorization_schema_verified",
+      "final_campaign_package_schema_verified",
+      "exact_mkt_0008_approval_binding_verified",
+      "separate_render_authorization_boundary_verified",
+      "mkt0008_creative_rendering_false_boundary_preserved_verified",
+      "deterministic_render_operation_identity_verified",
+      "immutable_render_authorization_no_overwrite_verified",
+      "canonical_product_asset_binding_verified",
+      "missing_canonical_product_asset_fails_closed_verified",
+      "historical_rendered_slide_forbidden_as_product_asset_verified",
+      "product_asset_drift_fail_closed_verified",
+      "deterministic_rendered_artifact_hashes_verified",
+      "rendered_artifact_sha256_verification_verified",
+      "immutable_final_campaign_package_no_overwrite_verified",
+      "final_package_identity_hash_verified",
+      "final_package_read_after_write_verified",
+      "direct_legacy_renderer_cli_disabled_verified",
+      "destructive_render_overwrite_disabled_verified",
+      "rerender_new_governed_identity_verified",
+      "publication_external_action_separation_verified",
+      "committed_source_secret_scan_passed",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/renderctl.py",
+    requiredTokens: [
+      "authorize",
+      "render",
+      "build_render_authorization",
+      "materialize_render_authorization",
+      "materialize_final_package",
+      "validate_final_package_document",
+      "validate_mkt0008_approved_chain",
+      "creative_rendering_authorized",
+      "missing_verified_product_assets",
+      "historical_rendered_slide_forbidden_as_product_asset",
+      "render_authorization_not_canonical_materialized_path",
+      "read_after_write_verified",
+      "publication_authorized",
+      "external_action_authorized",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
@@ -735,6 +844,7 @@ const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectReposit
   HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(

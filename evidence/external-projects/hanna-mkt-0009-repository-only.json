@@ -1,0 +1,105 @@
+{
+    "evidence_version":  "athena-external-project-repository-only-v1",
+    "source":  {
+                   "method":  "governed_local_validation_and_git_remote_verification",
+                   "build_id":  "HANNA-MKT-0009",
+                   "project_key":  "hanna-commerce-os",
+                   "module_key":  "agent-workflows",
+                   "build_session_title":  "HANNA-MKT-0009 Governed Approved Creative Render Authorization and Final Campaign Package"
+               },
+    "repository":  {
+                       "remote":  "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+                       "branch":  "feature/hanna-mkt-0009-governed-approved-creative-render-authorization-final-campaign-package",
+                       "parent_commit":  "fb062179e432ad08648011dafc13cc628f21f68f",
+                       "commit":  "0eba50ba77e5c98b0baa901507f0f0a4b1dd9a69",
+                       "tree":  "8be192be3ead4bbedf5b03a285f8106b0dfbe363",
+                       "remote_commit_verified":  true,
+                       "repository_clean":  true,
+                       "committed_files":  [
+                                               "schemas/creative-render-authorization.schema.json",
+                                               "schemas/final-campaign-package.schema.json",
+                                               "scripts/render_carousel.py",
+                                               "scripts/renderctl.py",
+                                               "tests/test_renderctl.py"
+                                           ]
+                   },
+    "files":  [
+                  {
+                      "path":  "schemas/creative-render-authorization.schema.json",
+                      "sha256":  "3ce2a838934538ce43e0a7f929be12a66ba6daae05e26ca162e81458872895ae"
+                  },
+                  {
+                      "path":  "schemas/final-campaign-package.schema.json",
+                      "sha256":  "6cb9e3c7bb459a921fb2b984b37266394f509b91080147a6e759915fc9288dd6"
+                  },
+                  {
+                      "path":  "scripts/render_carousel.py",
+                      "sha256":  "b387a11e1b6157c4f051f25e87ec7f87505463f22ea2e5cee5aae6cecebc1eee"
+                  },
+                  {
+                      "path":  "scripts/renderctl.py",
+                      "sha256":  "0e88990b89e7fea97097555e12a0b69203dfc357ab68276a85201c481f0eda1b"
+                  },
+                  {
+                      "path":  "tests/test_renderctl.py",
+                      "sha256":  "64a1480667fd22edfb3df007df02283c0c2710e9f1c4ee96128b1e2f3a3f86f8"
+                  }
+              ],
+    "validation":  {
+                       "python_unittest_total":  215,
+                       "python_unittest_passed":  215,
+                       "python_unittest_failed":  0,
+                       "python_subtests_passed":  12,
+                       "governed_approved_creative_render_authorization_final_package_validation_passed":  true,
+                       "focused_mkt_0009_tests_passed":  true,
+                       "focused_mkt_0009_test_total":  17,
+                       "complete_regression_suite_passed":  true,
+                       "complete_regression_test_total":  215,
+                       "existing_mkt_0001_0008_regressions_passed":  true,
+                       "render_authorization_schema_verified":  true,
+                       "final_campaign_package_schema_verified":  true,
+                       "exact_mkt_0008_approval_binding_verified":  true,
+                       "separate_render_authorization_boundary_verified":  true,
+                       "mkt0008_creative_rendering_false_boundary_preserved_verified":  true,
+                       "deterministic_render_operation_identity_verified":  true,
+                       "immutable_render_authorization_no_overwrite_verified":  true,
+                       "canonical_product_asset_binding_verified":  true,
+                       "missing_canonical_product_asset_fails_closed_verified":  true,
+                       "historical_rendered_slide_forbidden_as_product_asset_verified":  true,
+                       "product_asset_drift_fail_closed_verified":  true,
+                       "deterministic_rendered_artifact_hashes_verified":  true,
+                       "rendered_artifact_sha256_verification_verified":  true,
+                       "immutable_final_campaign_package_no_overwrite_verified":  true,
+                       "final_package_identity_hash_verified":  true,
+                       "final_package_read_after_write_verified":  true,
+                       "direct_legacy_renderer_cli_disabled_verified":  true,
+                       "destructive_render_overwrite_disabled_verified":  true,
+                       "rerender_new_governed_identity_verified":  true,
+                       "publication_external_action_separation_verified":  true,
+                       "committed_source_secret_scan_passed":  true
+                   },
+    "assertions":  {
+                       "product_database":  "none",
+                       "database_evidence_required":  false,
+                       "repository_write_performed_by_automatic_qa":  false,
+                       "database_write_performed_by_automatic_qa":  false,
+                       "manual_qa_pass_used":  false,
+                       "secret_values_recorded":  false,
+                       "rendering_requires_separate_governed_authorization":  true,
+                       "mkt0008_approval_directly_authorizes_rendering":  false,
+                       "publication_authorized":  false,
+                       "scheduling_authorized":  false,
+                       "external_action_authorized":  false,
+                       "ai_regeneration_authorized":  false,
+                       "direct_legacy_render_cli_authorized":  false,
+                       "render_overwrite_authorized":  false,
+                       "historical_rendered_slide_as_canonical_product_asset_authorized":  false,
+                       "notion_write_authorized":  false,
+                       "shopify_write_authorized":  false,
+                       "beautydna_write_authorized":  false,
+                       "customer_messaging_authorized":  false,
+                       "canonical_mkt0004_product_asset_required_for_product_render":  true,
+                       "read_after_write_required":  true,
+                       "hermes_used":  false
+                   }
+}

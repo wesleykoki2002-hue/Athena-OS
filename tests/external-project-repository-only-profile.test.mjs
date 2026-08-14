@@ -10,6 +10,7 @@ import {
   HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -66,6 +67,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0006_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -281,4 +283,29 @@ test("preserves the exact governed HANNA-MKT-0008 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 198);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/reviewctl.py");
+});
+test("selects the exact governed HANNA-MKT-0009 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0009 identities", () => {
+  const profile = HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE;
+  assert.equal(profile.target.repositoryHead, "0eba50ba77e5c98b0baa901507f0f0a4b1dd9a69");
+  assert.equal(profile.target.repositoryTree, "8be192be3ead4bbedf5b03a285f8106b0dfbe363");
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "schemas/creative-render-authorization.schema.json",
+    "schemas/final-campaign-package.schema.json",
+    "scripts/render_carousel.py",
+    "scripts/renderctl.py",
+    "tests/test_renderctl.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 5);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 215);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/renderctl.py");
 });
