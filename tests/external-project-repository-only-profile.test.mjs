@@ -11,6 +11,7 @@ import {
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -68,6 +69,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -308,4 +310,42 @@ test("preserves the exact governed HANNA-MKT-0009 identities", () => {
   assert.equal(profile.validationEvidence.expectedUnitTestCount, 215);
   assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
   assert.equal(profile.callableContract.relativePath, "scripts/renderctl.py");
+});
+
+test("selects the exact governed HANNA-MKT-0010 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0010 identities and UI contract", () => {
+  const profile = HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE;
+  assert.equal(profile.target.repositoryHead, "8355d5e9a70e6ee4676975abf5a28cbd81dcdac3");
+  assert.equal(profile.target.repositoryTree, "45b2111d719618b3b67e649d43fa1fa15464e8e9");
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "control_center/__init__.py",
+    "control_center/app.py",
+    "control_center/artifacts.py",
+    "control_center/operations.py",
+    "control_center/repository.py",
+    "control_center/templates/control_center/index.html",
+    "requirements.txt",
+    "tests/test_control_center.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 8);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 226);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "control_center/app.py");
+  assert.deepEqual(profile.uiContract, {
+    relativePath: "control_center/templates/control_center/index.html",
+    requiredTokens: [
+      "Governed persisted artifacts",
+      "Governed campaign operation readiness",
+      "Live mutation controls exposed:",
+      "Lifecycle state is not inferred",
+    ],
+  });
 });

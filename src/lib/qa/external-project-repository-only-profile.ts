@@ -839,6 +839,124 @@ export const HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE = {
     ],
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
+export const HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0010-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0010 Hanna Marketing Control Center and Governed Notion Campaign Operations",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0010-hanna-marketing-control-center-governed-notion-campaign-operations",
+    repositoryHead:
+      "8355d5e9a70e6ee4676975abf5a28cbd81dcdac3",
+    repositoryTree:
+      "45b2111d719618b3b67e649d43fa1fa15464e8e9",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "control_center/__init__.py",
+    "control_center/app.py",
+    "control_center/artifacts.py",
+    "control_center/operations.py",
+    "control_center/repository.py",
+    "control_center/templates/control_center/index.html",
+    "requirements.txt",
+    "tests/test_control_center.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "control_center/__init__.py",
+      sha256: "9666437c658914d7adff70a92660f2d08b7ab962575081253af72e5691be76d0",
+    },
+    {
+      relativePath: "control_center/app.py",
+      sha256: "bd26d0a934c253dc1dcbcaa16ca4120e4f160b5c7fcb71906cfb2720a1a84352",
+    },
+    {
+      relativePath: "control_center/artifacts.py",
+      sha256: "ff12b7aa7fe9e02288bb249e49428dce88ac4c902584194b84b2e866ab1fd502",
+    },
+    {
+      relativePath: "control_center/operations.py",
+      sha256: "caf30aadc97139c739918ee8c3059f50d320425fe2da89998174db9320aa025d",
+    },
+    {
+      relativePath: "control_center/repository.py",
+      sha256: "033051487631b4e7861f7b6cf3837740317e35b564b44c6e8f13b523b51de965",
+    },
+    {
+      relativePath: "control_center/templates/control_center/index.html",
+      sha256: "b9cad59fc747e99e75dc56d0bf549ed1e9e5c053bc4281ff237ad58530212198",
+    },
+    {
+      relativePath: "requirements.txt",
+      sha256: "058372df3c0118a2b205599522dfbf03d8701d63332561eddc85bcac334e7c68",
+    },
+    {
+      relativePath: "tests/test_control_center.py",
+      sha256: "a1e3f58e2cf355c443d1353990d16208de1e338c2c2aed040b21f5b65d44098a",
+    },
+  ],
+  validationEvidence: {
+    relativePath: "evidence/external-projects/hanna-mkt-0010-repository-only.json",
+    sha256: "634b5efbc6364b51ef6c0f01e1cf063f42b0c285a64f76b5e40e28fa153cdaa2",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0010",
+    expectedUnitTestCount: 226,
+    requiredTrueFields: [
+      "governed_hanna_marketing_control_center_validation_passed",
+      "focused_mkt_0010_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0009_regressions_passed",
+      "repository_only_no_product_database_verified",
+      "canonical_repository_visibility_verified",
+      "schema_validated_artifact_visibility_verified",
+      "governed_artifact_family_coverage_verified",
+      "active_asset_visibility_binding_verified",
+      "operation_readiness_fail_closed_verified",
+      "notion_mutation_controls_not_exposed_verified",
+      "notion_credential_value_not_exposed_verified",
+      "lifecycle_state_inference_disabled_verified",
+      "approval_render_publication_boundary_verified",
+      "publish_date_not_scheduling_proof_verified",
+      "control_center_dashboard_smoke_passed",
+      "control_center_health_smoke_passed",
+      "committed_source_secret_scan_passed",
+      "exact_hanna_remote_commit_verified",
+      "exact_hanna_remote_tree_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "control_center/app.py",
+    requiredTokens: [
+      "create_app",
+      "read_dashboard_state",
+      "read_operation_readiness",
+      "repository_only_no_product_database",
+    ],
+  },
+  uiContract: {
+    relativePath: "control_center/templates/control_center/index.html",
+    requiredTokens: [
+      "Governed persisted artifacts",
+      "Governed campaign operation readiness",
+      "Live mutation controls exposed:",
+      "Lifecycle state is not inferred",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
+
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
@@ -849,6 +967,7 @@ const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectReposit
   HANNA_MKT_0007_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(

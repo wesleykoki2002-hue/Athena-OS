@@ -1,0 +1,108 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_and_git_remote_verification",
+    "build_id": "HANNA-MKT-0010",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0010 Hanna Marketing Control Center and Governed Notion Campaign Operations"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0010-hanna-marketing-control-center-governed-notion-campaign-operations",
+    "parent_commit": "0eba50ba77e5c98b0baa901507f0f0a4b1dd9a69",
+    "commit": "8355d5e9a70e6ee4676975abf5a28cbd81dcdac3",
+    "tree": "45b2111d719618b3b67e649d43fa1fa15464e8e9",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "control_center/__init__.py",
+      "control_center/app.py",
+      "control_center/artifacts.py",
+      "control_center/operations.py",
+      "control_center/repository.py",
+      "control_center/templates/control_center/index.html",
+      "requirements.txt",
+      "tests/test_control_center.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "control_center/__init__.py",
+      "sha256": "9666437c658914d7adff70a92660f2d08b7ab962575081253af72e5691be76d0"
+    },
+    {
+      "path": "control_center/app.py",
+      "sha256": "bd26d0a934c253dc1dcbcaa16ca4120e4f160b5c7fcb71906cfb2720a1a84352"
+    },
+    {
+      "path": "control_center/artifacts.py",
+      "sha256": "ff12b7aa7fe9e02288bb249e49428dce88ac4c902584194b84b2e866ab1fd502"
+    },
+    {
+      "path": "control_center/operations.py",
+      "sha256": "caf30aadc97139c739918ee8c3059f50d320425fe2da89998174db9320aa025d"
+    },
+    {
+      "path": "control_center/repository.py",
+      "sha256": "033051487631b4e7861f7b6cf3837740317e35b564b44c6e8f13b523b51de965"
+    },
+    {
+      "path": "control_center/templates/control_center/index.html",
+      "sha256": "b9cad59fc747e99e75dc56d0bf549ed1e9e5c053bc4281ff237ad58530212198"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "058372df3c0118a2b205599522dfbf03d8701d63332561eddc85bcac334e7c68"
+    },
+    {
+      "path": "tests/test_control_center.py",
+      "sha256": "a1e3f58e2cf355c443d1353990d16208de1e338c2c2aed040b21f5b65d44098a"
+    }
+  ],
+  "validation": {
+    "governed_hanna_marketing_control_center_validation_passed": true,
+    "focused_mkt_0010_tests_passed": true,
+    "focused_mkt_0010_test_total": 11,
+    "complete_regression_suite_passed": true,
+    "complete_regression_test_total": 226,
+    "existing_mkt_0001_0009_regressions_passed": true,
+    "python_unittest_total": 226,
+    "python_unittest_passed": 226,
+    "python_unittest_failed": 0,
+    "repository_only_no_product_database_verified": true,
+    "canonical_repository_visibility_verified": true,
+    "schema_validated_artifact_visibility_verified": true,
+    "governed_artifact_family_coverage_verified": true,
+    "active_asset_visibility_binding_verified": true,
+    "operation_readiness_fail_closed_verified": true,
+    "notion_mutation_controls_not_exposed_verified": true,
+    "notion_credential_value_not_exposed_verified": true,
+    "lifecycle_state_inference_disabled_verified": true,
+    "approval_render_publication_boundary_verified": true,
+    "publish_date_not_scheduling_proof_verified": true,
+    "control_center_dashboard_smoke_passed": true,
+    "control_center_health_smoke_passed": true,
+    "committed_source_secret_scan_passed": true,
+    "exact_hanna_remote_commit_verified": true,
+    "exact_hanna_remote_tree_verified": true
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "database_write_performed_by_automatic_qa": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "hermes_used": false,
+    "notion_write_authorized": false,
+    "openai_usage_authorized": false,
+    "rendering_authorized": false,
+    "publication_authorized": false,
+    "scheduling_authorized": false,
+    "external_action_authorized": false,
+    "secret_values_recorded": false,
+    "live_mutation_controls_exposed": false,
+    "lifecycle_state_inferred": false,
+    "read_after_write_required_for_external_mutation": true
+  }
+}
