@@ -957,6 +957,139 @@ export const HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE = {
   },
 } as const satisfies ExternalProjectRepositoryOnlyProfile;
 
+export const HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE = {
+  profileKey: "hanna-marketing-hanna-mkt-0011-repository-only",
+  packetIdentity: {
+    project_key: "hanna-commerce-os",
+    module_key: "agent-workflows",
+    build_session_title:
+      "HANNA-MKT-0011 Governed Hermes Unattended Competitive and Market Research Operator",
+  },
+  target: {
+    repositoryRemote:
+      "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    repositoryBranch:
+      "feature/hanna-mkt-0011-governed-hermes-unattended-competitive-and-market-research-operator",
+    repositoryHead:
+      "368a3bfb361d5bf4d347475807ee568ea6338922",
+    repositoryTree:
+      "ea9aa608eaecd2a2e33191a0e8bf9be3cb6221ef",
+    repositoryPathEnvironment:
+      "ATHENA_HANNA_SOCIAL_OPERATOR_REPOSITORY_PATH",
+    repositoryPathFallbacks: [
+      "C:\\supabase\\hanna-social-operator",
+      "/mnt/c/supabase/hanna-social-operator",
+    ],
+  },
+  expectedChangedFiles: [
+    "control_center/repository.py",
+    "control_center/templates/control_center/index.html",
+    "prompts/RUN_GOVERNED_RESEARCH_PROMPT.md",
+    "schemas/research-run.schema.json",
+    "scripts/hermes_research_cronctl.py",
+    "scripts/researchctl.py",
+    "tests/test_hermes_research_cronctl.py",
+    "tests/test_research_control_center.py",
+    "tests/test_researchctl.py",
+  ],
+  requiredFiles: [
+    {
+      relativePath: "control_center/repository.py",
+      sha256: "2713ed24598a41904284f4d5d05868ba8aa1fb761d75755a407d457e81898bfd",
+    },
+    {
+      relativePath: "control_center/templates/control_center/index.html",
+      sha256: "f311376e900e0180dd88f11af9c1c44e0d9daa2e32a571053b732764ad655c40",
+    },
+    {
+      relativePath: "prompts/RUN_GOVERNED_RESEARCH_PROMPT.md",
+      sha256: "3446158e07826889991e77ba2decd9873a86daa429829e8b714c888c660cd703",
+    },
+    {
+      relativePath: "schemas/research-run.schema.json",
+      sha256: "937159da79ea06f3ef39099ec159bb8ce02ddf5edc3ccdab93ed708f07263d06",
+    },
+    {
+      relativePath: "scripts/hermes_research_cronctl.py",
+      sha256: "2180285ab0fdd2a08b24a1ccee5f75713a0a4f865e285e661826af1d41f28ac0",
+    },
+    {
+      relativePath: "scripts/researchctl.py",
+      sha256: "67b654bfe8172f581f86c350d6c6d3a3672d7534990ee0954e83fe69eacd1890",
+    },
+    {
+      relativePath: "tests/test_hermes_research_cronctl.py",
+      sha256: "4691e78f9f8714222a147d0a16839a2299847b1d427ec5b23786e6b33a310ca2",
+    },
+    {
+      relativePath: "tests/test_research_control_center.py",
+      sha256: "241dfb4e1c62a0c8f65150903e15d83a8f6f56132452a452e92de6fa61215c05",
+    },
+    {
+      relativePath: "tests/test_researchctl.py",
+      sha256: "97b07de6ddf16ed838ee9a462b51740e39d62bff589db23170b65d851636e7d2",
+    },
+  ],
+  validationEvidence: {
+    relativePath: "evidence/external-projects/hanna-mkt-0011-repository-only.json",
+    sha256: "a9051751e82a675873187276e737169267885419005804cc4947a4106c7d52a1",
+    evidenceVersion: "athena-external-project-repository-only-v1",
+    buildId: "HANNA-MKT-0011",
+    expectedUnitTestCount: 273,
+    requiredTrueFields: [
+      "governed_unattended_research_operator_validation_passed",
+      "focused_mkt_0011_tests_passed",
+      "complete_regression_suite_passed",
+      "existing_mkt_0001_0010_regressions_passed",
+      "repository_only_no_product_database_verified",
+      "deterministic_research_plan_verified",
+      "enabled_competitor_fail_closed_verified",
+      "research_run_identity_deduplication_verified",
+      "race_safe_no_overwrite_verified",
+      "persisted_provenance_revalidation_verified",
+      "bounded_retry_failure_states_verified",
+      "control_center_research_visibility_verified",
+      "research_authority_boundaries_verified",
+      "exact_cron_job_id_binding_verified",
+      "hermes_profile_gateway_running_verified",
+      "governed_production_cron_installed_verified",
+      "exactly_one_profile_scoped_cron_verified",
+      "cron_schedule_workdir_delivery_verified",
+      "source_git_unchanged_during_runtime_activation_verified",
+      "hermes_research_not_executed_during_activation_verified",
+      "committed_source_secret_scan_passed",
+      "exact_hanna_remote_commit_verified",
+      "exact_hanna_remote_tree_verified",
+    ],
+    resolveCalculationFromValidation: true,
+  },
+  callableContract: {
+    relativePath: "scripts/researchctl.py",
+    requiredTokens: [
+      "build_plan",
+      "candidate_template",
+      "validate_candidate",
+      "materialize_run",
+      "read_repository_state",
+      "AUTHORITY_BOUNDARIES",
+      "no_enabled_competitors",
+    ],
+  },
+  uiContract: {
+    relativePath: "control_center/templates/control_center/index.html",
+    requiredTokens: [
+      "Unattended research operator",
+      "Enabled competitors",
+      "Research runs",
+      "Research evidence and recommendations do not authorize creative",
+      "Notion writeback",
+      "Shopify mutation",
+      "BeautyDNA mutation",
+      "customer messaging",
+    ],
+  },
+} as const satisfies ExternalProjectRepositoryOnlyProfile;
+
 const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectRepositoryOnlyProfile[] = [
   HANNA_MKT_0001_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0002_REPOSITORY_ONLY_PROFILE,
@@ -968,6 +1101,7 @@ const EXTERNAL_PROJECT_REPOSITORY_ONLY_PROFILES: readonly ExternalProjectReposit
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE,
 ];
 
 export function selectExternalProjectRepositoryOnlyProfile(

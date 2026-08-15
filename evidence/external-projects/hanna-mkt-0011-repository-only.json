@@ -1,0 +1,124 @@
+{
+  "evidence_version": "athena-external-project-repository-only-v1",
+  "source": {
+    "method": "governed_local_validation_git_remote_and_hermes_runtime_verification",
+    "build_id": "HANNA-MKT-0011",
+    "project_key": "hanna-commerce-os",
+    "module_key": "agent-workflows",
+    "build_session_title": "HANNA-MKT-0011 Governed Hermes Unattended Competitive and Market Research Operator"
+  },
+  "repository": {
+    "remote": "https://github.com/wesleykoki2002-hue/hanna-social-operator.git",
+    "branch": "feature/hanna-mkt-0011-governed-hermes-unattended-competitive-and-market-research-operator",
+    "parent_commit": "8355d5e9a70e6ee4676975abf5a28cbd81dcdac3",
+    "commit": "368a3bfb361d5bf4d347475807ee568ea6338922",
+    "tree": "ea9aa608eaecd2a2e33191a0e8bf9be3cb6221ef",
+    "remote_commit_verified": true,
+    "repository_clean": true,
+    "committed_files": [
+      "control_center/repository.py",
+      "control_center/templates/control_center/index.html",
+      "prompts/RUN_GOVERNED_RESEARCH_PROMPT.md",
+      "schemas/research-run.schema.json",
+      "scripts/hermes_research_cronctl.py",
+      "scripts/researchctl.py",
+      "tests/test_hermes_research_cronctl.py",
+      "tests/test_research_control_center.py",
+      "tests/test_researchctl.py"
+    ]
+  },
+  "files": [
+    {
+      "path": "control_center/repository.py",
+      "sha256": "2713ed24598a41904284f4d5d05868ba8aa1fb761d75755a407d457e81898bfd"
+    },
+    {
+      "path": "control_center/templates/control_center/index.html",
+      "sha256": "f311376e900e0180dd88f11af9c1c44e0d9daa2e32a571053b732764ad655c40"
+    },
+    {
+      "path": "prompts/RUN_GOVERNED_RESEARCH_PROMPT.md",
+      "sha256": "3446158e07826889991e77ba2decd9873a86daa429829e8b714c888c660cd703"
+    },
+    {
+      "path": "schemas/research-run.schema.json",
+      "sha256": "937159da79ea06f3ef39099ec159bb8ce02ddf5edc3ccdab93ed708f07263d06"
+    },
+    {
+      "path": "scripts/hermes_research_cronctl.py",
+      "sha256": "2180285ab0fdd2a08b24a1ccee5f75713a0a4f865e285e661826af1d41f28ac0"
+    },
+    {
+      "path": "scripts/researchctl.py",
+      "sha256": "67b654bfe8172f581f86c350d6c6d3a3672d7534990ee0954e83fe69eacd1890"
+    },
+    {
+      "path": "tests/test_hermes_research_cronctl.py",
+      "sha256": "4691e78f9f8714222a147d0a16839a2299847b1d427ec5b23786e6b33a310ca2"
+    },
+    {
+      "path": "tests/test_research_control_center.py",
+      "sha256": "241dfb4e1c62a0c8f65150903e15d83a8f6f56132452a452e92de6fa61215c05"
+    },
+    {
+      "path": "tests/test_researchctl.py",
+      "sha256": "97b07de6ddf16ed838ee9a462b51740e39d62bff589db23170b65d851636e7d2"
+    }
+  ],
+  "validation": {
+    "governed_unattended_research_operator_validation_passed": true,
+    "focused_mkt_0011_tests_passed": true,
+    "focused_mkt_0011_test_total": 47,
+    "complete_regression_suite_passed": true,
+    "complete_regression_test_total": 273,
+    "existing_mkt_0001_0010_regressions_passed": true,
+    "python_unittest_total": 273,
+    "python_unittest_passed": 273,
+    "python_unittest_failed": 0,
+    "repository_only_no_product_database_verified": true,
+    "deterministic_research_plan_verified": true,
+    "enabled_competitor_fail_closed_verified": true,
+    "research_run_identity_deduplication_verified": true,
+    "race_safe_no_overwrite_verified": true,
+    "persisted_provenance_revalidation_verified": true,
+    "bounded_retry_failure_states_verified": true,
+    "control_center_research_visibility_verified": true,
+    "research_authority_boundaries_verified": true,
+    "exact_cron_job_id_binding_verified": true,
+    "hermes_profile_gateway_running_verified": true,
+    "governed_production_cron_installed_verified": true,
+    "exactly_one_profile_scoped_cron_verified": true,
+    "cron_schedule_workdir_delivery_verified": true,
+    "source_git_unchanged_during_runtime_activation_verified": true,
+    "hermes_research_not_executed_during_activation_verified": true,
+    "committed_source_secret_scan_passed": true,
+    "exact_hanna_remote_commit_verified": true,
+    "exact_hanna_remote_tree_verified": true
+  },
+  "assertions": {
+    "product_database": "none",
+    "database_evidence_required": false,
+    "database_write_performed_by_automatic_qa": false,
+    "repository_write_performed_by_automatic_qa": false,
+    "manual_qa_pass_used": false,
+    "hermes_used": true,
+    "hermes_profile": "hanna-social",
+    "hermes_profile_gateway_running": true,
+    "production_cron_installed": true,
+    "matching_cron_job_count": 1,
+    "matching_cron_job_scope": "profile",
+    "cron_schedule": "0 8 * * *",
+    "cron_delivery": "local",
+    "cron_workdir": "/mnt/c/supabase/hanna-social-operator",
+    "hermes_research_executed_during_activation": false,
+    "notion_write_authorized": false,
+    "shopify_mutation_authorized": false,
+    "beautydna_mutation_authorized": false,
+    "customer_messaging_authorized": false,
+    "rendering_authorized": false,
+    "publication_authorized": false,
+    "scheduling_authorized": false,
+    "external_action_authorized": false,
+    "secret_values_recorded": false
+  }
+}

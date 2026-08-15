@@ -15,6 +15,7 @@ import {
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
 function evidence(profile) {
@@ -315,6 +316,38 @@ test("builds HANNA-MKT-0010 repository-only QA with verified UI scope", () => {
     /control_center\/templates\/control_center\/index\.html/,
   );
   assert.match(updates.calculation_verified.actual_result, /226\/226/);
+  assert.equal(
+    updates.calculation_verified.evidence.calculation_source,
+    "profile_validation_evidence",
+  );
+});
+test("builds HANNA-MKT-0011 repository-only QA with governed research UI and calculation evidence", () => {
+  const profile = HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE;
+  const updates = buildExternalProjectRepositoryOnlyAutomaticQaUpdates({
+    profile,
+    packet: packet(profile),
+    evidence: evidence(profile),
+  });
+
+  assert.equal(updates.route_or_function_exists.status, "pass");
+  assert.equal(updates.terminal_build_clean.status, "pass");
+  assert.equal(updates.no_hardcoded_planning_values.status, "pass");
+  assert.equal(updates.ui_shows_expected_new_fields.status, "pass");
+  assert.equal(updates.database_read_verified.status, "not_applicable");
+  assert.equal(updates.database_write_verified.status, "not_applicable");
+  assert.equal(updates.saved_row_verified.status, "not_applicable");
+  assert.equal(updates.rls_policy_reviewed.status, "not_applicable");
+  assert.equal(updates.core_pages_regression_checked.status, "not_applicable");
+  assert.equal(updates.calculation_verified.status, "pass");
+  assert.match(
+    updates.route_or_function_exists.actual_result,
+    /scripts\/researchctl\.py/,
+  );
+  assert.match(
+    updates.ui_shows_expected_new_fields.actual_result,
+    /control_center\/templates\/control_center\/index\.html/,
+  );
+  assert.match(updates.calculation_verified.actual_result, /273\/273/);
   assert.equal(
     updates.calculation_verified.evidence.calculation_source,
     "profile_validation_evidence",

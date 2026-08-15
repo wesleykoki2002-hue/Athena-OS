@@ -12,6 +12,7 @@ import {
   HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
   HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
+  HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE,
   selectExternalProjectRepositoryOnlyProfile,
 } from "../src/lib/qa/external-project-repository-only-profile.ts";
 
@@ -70,6 +71,7 @@ test("repository-only profiles do not require a product Supabase identity", () =
     HANNA_MKT_0008_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0009_REPOSITORY_ONLY_PROFILE,
     HANNA_MKT_0010_REPOSITORY_ONLY_PROFILE,
+    HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE,
   ]) {
     assert.equal(Object.hasOwn(profile.target, "supabaseProjectRef"), false);
     assert.equal(Object.hasOwn(profile.target, "supabaseUrlEnvironment"), false);
@@ -346,6 +348,48 @@ test("preserves the exact governed HANNA-MKT-0010 identities and UI contract", (
       "Governed campaign operation readiness",
       "Live mutation controls exposed:",
       "Lifecycle state is not inferred",
+    ],
+  });
+});
+test("selects the exact governed HANNA-MKT-0011 repository-only profile", () => {
+  assert.equal(
+    selectExternalProjectRepositoryOnlyProfile(
+      packet(HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE),
+    ),
+    HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE,
+  );
+});
+
+test("preserves the exact governed HANNA-MKT-0011 research, runtime, and UI contract", () => {
+  const profile = HANNA_MKT_0011_REPOSITORY_ONLY_PROFILE;
+  assert.equal(profile.target.repositoryHead, "368a3bfb361d5bf4d347475807ee568ea6338922");
+  assert.equal(profile.target.repositoryTree, "ea9aa608eaecd2a2e33191a0e8bf9be3cb6221ef");
+  assert.deepEqual([...profile.expectedChangedFiles], [
+    "control_center/repository.py",
+    "control_center/templates/control_center/index.html",
+    "prompts/RUN_GOVERNED_RESEARCH_PROMPT.md",
+    "schemas/research-run.schema.json",
+    "scripts/hermes_research_cronctl.py",
+    "scripts/researchctl.py",
+    "tests/test_hermes_research_cronctl.py",
+    "tests/test_research_control_center.py",
+    "tests/test_researchctl.py",
+  ]);
+  assert.equal(profile.requiredFiles.length, 9);
+  assert.equal(profile.validationEvidence.expectedUnitTestCount, 273);
+  assert.equal(profile.validationEvidence.resolveCalculationFromValidation, true);
+  assert.equal(profile.callableContract.relativePath, "scripts/researchctl.py");
+  assert.deepEqual(profile.uiContract, {
+    relativePath: "control_center/templates/control_center/index.html",
+    requiredTokens: [
+      "Unattended research operator",
+      "Enabled competitors",
+      "Research runs",
+      "Research evidence and recommendations do not authorize creative",
+      "Notion writeback",
+      "Shopify mutation",
+      "BeautyDNA mutation",
+      "customer messaging",
     ],
   });
 });
