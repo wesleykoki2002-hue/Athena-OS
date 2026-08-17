@@ -1,0 +1,46 @@
+{
+  "evidence_version": "bdna-pdna-0001-runtime-acceptance-v1",
+  "build_id": "BDNA-PDNA-0001",
+  "target_supabase_project_ref": "hidsyvanaipxxyyhjgmc",
+
+  "generator": {
+    "deployed_version": 12,
+    "normalized_sha256": "f901aaa7807b1b17d4445f593ea7c695afdd0e714e4fe575757d0dee3968b657",
+    "production_candidates": 0,
+    "debug_launch_candidates": 5,
+    "approved_launch_product_dna": 5,
+    "null_launch_shopify_variants": 5,
+    "needs_shopify_creation_launch_products": 5,
+    "governance_warning_present": true,
+    "writes_performed": false,
+    "stale_v11_archive_sha256": "5d99eb18019ec657cbd1224638f0facdc784d4fb9df6f0de69c2a4e391acbfb0"
+  },
+
+  "explainer": {
+    "deployed_version": 11,
+    "normalized_sha256": "5181486df6228a2001fbc5348c8d3361e801d282d34935a1c051aff8a0cd85a3",
+    "production_empty_http_status": 400,
+    "debug_launch_candidates": 5,
+    "writes_performed": false
+  },
+
+  "shopify_result": {
+    "deployed_version": 8,
+    "raw_source_sha256": "6d0891f6566678af78e5a8d40f73bc41cc8e8953ea09ef5e9d9e8c497dc1d059",
+    "normalized_sha256": "2789fab9c33328f106f2caa4ead767a54fbf2c41137e99d8756bc4e7859a424e",
+    "production_zero_state_http_status": 200,
+    "ok": true,
+    "customer_products": 0,
+    "missing_steps": 5,
+    "ranked_arrays_empty": true,
+    "fabricated_claims": false,
+    "shopify_linkage_write": false,
+    "superseded_v7_archive_sha256": "fc07ed1a5cdf2c4bc7f6c79b2d37305766351443ef8786b24579418859e3e359"
+  },
+
+  "internal_key_rotation": {
+    "protected_blob_sha256": "2b7ceeefefcb09100af754a3bc61bb4beb1ecd1dc3886c6fe954d992f41976b6",
+    "remote_updated_at": "2026-08-17T00:11:37.672Z",
+    "plaintext_recorded": false
+  }
+}

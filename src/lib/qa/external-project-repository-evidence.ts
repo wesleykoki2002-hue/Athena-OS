@@ -180,7 +180,7 @@ function securityTokenCounts(
 }
 
 function validateProfileIdentity(
-  profile: ExternalProjectCompletionProfile,
+  profile: Pick<ExternalProjectCompletionProfile, "target" | "migrations">,
 ) {
   if (
     !GIT_OBJECT_PATTERN.test(
@@ -203,7 +203,7 @@ function validateProfileIdentity(
 
 export async function
 verifyExternalProjectRepositoryEvidence(
-  profile: ExternalProjectCompletionProfile,
+  profile: Pick<ExternalProjectCompletionProfile, "target" | "migrations">,
   environment: NodeJS.ProcessEnv =
     process.env,
 ): Promise<ExternalProjectRepositoryEvidence> {

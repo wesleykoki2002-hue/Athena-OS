@@ -89,7 +89,7 @@ ExternalProjectSupabaseClientFactory = (
 
 export function
 createExternalProjectSupabaseClient(
-  profile: ExternalProjectCompletionProfile,
+  profile: Pick<ExternalProjectCompletionProfile, "target">,
   environment: NodeJS.ProcessEnv =
     process.env,
   clientFactory:

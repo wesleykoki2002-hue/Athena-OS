@@ -17,6 +17,13 @@ import {
   type ExternalProjectCompletionProfile
 } from "@/lib/qa/external-project-completion-profile";
 import {
+  buildExternalProjectProductDnaAutomaticQaUpdates
+} from "@/lib/qa/external-project-product-dna-evidence";
+import {
+  selectExternalProjectProductDnaProfile,
+  type ExternalProjectProductDnaProfile
+} from "@/lib/qa/external-project-product-dna-profile";
+import {
   buildExternalProjectRepositoryOnlyAutomaticQaUpdates,
   verifyExternalProjectRepositoryOnlyEvidence
 } from "@/lib/qa/external-project-repository-only-evidence";
@@ -4158,6 +4165,57 @@ async function addExternalProjectCompletionEvidence(input: {
   );
 }
 
+async function addExternalProjectProductDnaEvidence(input: {
+  profile: ExternalProjectProductDnaProfile;
+  packet: CompletionPacket;
+  repoRoot: string;
+  updates: Record<
+    string,
+    AutomaticQaUpdate
+  >;
+}) {
+  const {
+    profile,
+    packet,
+    repoRoot,
+    updates
+  } = input;
+
+  const repository =
+    await verifyExternalProjectRepositoryEvidence(
+      profile
+    );
+
+  const beautySupabase =
+    createExternalProjectSupabaseClient(
+      profile
+    );
+
+  const externalUpdates =
+    await buildExternalProjectProductDnaAutomaticQaUpdates(
+      {
+        profile,
+        packet: {
+          id: packet.id,
+          project_key:
+            packet.project_key,
+          module_key:
+            packet.module_key,
+          build_session_title:
+            packet.build_session_title
+        },
+        repository,
+        supabase:
+          beautySupabase,
+        repoRoot
+      }
+    );
+
+  Object.assign(
+    updates,
+    externalUpdates
+  );
+}
 async function addExternalProjectRepositoryOnlyEvidence(input: {
   profile: ExternalProjectRepositoryOnlyProfile;
   packet: CompletionPacket;
@@ -4632,6 +4690,10 @@ export async function applyAutomaticQaEvidence(
       packet
     );
 
+  const externalProjectProductDnaProfile =
+    selectExternalProjectProductDnaProfile(
+      packet
+    );
   const externalProjectRepositoryOnlyProfile =
     selectExternalProjectRepositoryOnlyProfile(
       packet
@@ -4682,7 +4744,17 @@ export async function applyAutomaticQaEvidence(
       repoRoot,
       updates: generic.updates
     });
-  } else if (externalProjectProfile) {
+  } else if (
+    externalProjectProductDnaProfile
+  ) {
+    await addExternalProjectProductDnaEvidence({
+      profile:
+        externalProjectProductDnaProfile,
+      packet,
+      repoRoot,
+      updates:
+        generic.updates
+    });  } else if (externalProjectProfile) {
     await addExternalProjectCompletionEvidence({
       profile:
         externalProjectProfile,
