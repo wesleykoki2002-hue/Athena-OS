@@ -288,6 +288,11 @@ function safeRepoPath(
       repoRoot,
       "supabase"
     );
+  } else if (topLevel === "audits") {
+    scopedRoot = path.join(
+      repoRoot,
+      "audits"
+    );
   } else {
     throw new Error(
       `Automatic QA cannot read outside approved repository roots: ${relativePath}`
@@ -366,7 +371,9 @@ type KnownQaLogName =
   | "0086_automatic_qa_profile_repair_build.txt"
   | "0086_automatic_qa_profile_repair_eslint.txt"
   | "0087_automatic_qa_profile_repair_build.txt"
-  | "0087_automatic_qa_profile_repair_eslint.txt";
+  | "0087_automatic_qa_profile_repair_eslint.txt"
+  | "0089_external_identity_repair_build.txt"
+  | "0089_external_identity_repair_eslint.txt";
 
 async function readKnownQaLog(
   repoRoot: string,
@@ -457,6 +464,17 @@ function canonicalAutomaticQaEvidenceProfileApplies(
       "0087 Build title: Canonical Automatic-QA Evidence Dependency and Repository Reproducibility Repair"
   );
 }
+function intakeExternalBuildIdentityMetadataCollisionProfileApplies(
+  packet: CompletionPacket
+) {
+  return (
+    packet.project_key === "athena-cto" &&
+    packet.module_key === "project-memory" &&
+    packet.build_session_title ===
+      "0089 Build title: Athena Intake External Build Identity Metadata Namespace Collision Repair"
+  );
+}
+
 
 function update(
   status: AutomaticQaStatus,
@@ -773,8 +791,18 @@ async function buildGenericEvidence(input: {
     canonicalAutomaticQaEvidenceProfileApplies(
       packet
     );
+  const intakeExternalBuildIdentityMetadataCollisionProfile =
+    intakeExternalBuildIdentityMetadataCollisionProfileApplies(
+      packet
+    );
 
   const buildLog =
+    intakeExternalBuildIdentityMetadataCollisionProfile
+      ? await readKnownQaLog(
+          repoRoot,
+          "0089_external_identity_repair_build.txt"
+        )
+      :
     canonicalAutomaticQaEvidenceProfile
       ? await readKnownQaLog(
           repoRoot,
@@ -799,6 +827,12 @@ async function buildGenericEvidence(input: {
           );
 
   const eslintLog =
+    intakeExternalBuildIdentityMetadataCollisionProfile
+      ? await readKnownQaLog(
+          repoRoot,
+          "0089_external_identity_repair_eslint.txt"
+        )
+      :
     canonicalAutomaticQaEvidenceProfile
       ? await readKnownQaLog(
           repoRoot,
@@ -2047,6 +2081,513 @@ async function addCanonicalAutomaticQaEvidenceDependencyEvidence(input: {
           }
         );
 }
+
+
+async function addIntakeExternalBuildIdentityMetadataCollisionEvidence(input: {
+  supabase: SupabaseClient;
+  packet: CompletionPacket;
+  repoRoot: string;
+  updates: Record<string, AutomaticQaUpdate>;
+}) {
+  const {
+    supabase,
+    packet,
+    repoRoot,
+    updates
+  } = input;
+
+  const governedFiles = await readRepoFiles(
+    repoRoot,
+    [
+      "audits/athena-0089-intake-external-build-identity-metadata-namespace-collision.sql",
+      "supabase/migrations/20260819223500_0089_intake_external_build_identity_metadata_namespace_collision_repair.sql",
+      "supabase/tests/20260819223501_0089_intake_external_build_identity_metadata_namespace_collision_automatic_qa.sql",
+      "supabase/tests/20260819223502_0089_intake_external_build_identity_metadata_namespace_collision_transactional_validation.sql",
+      "supabase/migrations/20260820233000_0089_automatic_qa_live_evidence_reader.sql",
+      "supabase/tests/20260820233001_0089_automatic_qa_live_evidence_reader.sql",
+      "src/lib/qa/automatic-evidence.ts"
+    ]
+  );
+
+  const fileByPath = new Map(
+    governedFiles.map((file) => [
+      file.relative_path,
+      file
+    ])
+  );
+
+  const repairMigration =
+    fileByPath.get(
+      "supabase/migrations/20260819223500_0089_intake_external_build_identity_metadata_namespace_collision_repair.sql"
+    );
+
+  const structuralQa =
+    fileByPath.get(
+      "supabase/tests/20260819223501_0089_intake_external_build_identity_metadata_namespace_collision_automatic_qa.sql"
+    );
+
+  const transactionalQa =
+    fileByPath.get(
+      "supabase/tests/20260819223502_0089_intake_external_build_identity_metadata_namespace_collision_transactional_validation.sql"
+    );
+
+  const audit =
+    fileByPath.get(
+      "audits/athena-0089-intake-external-build-identity-metadata-namespace-collision.sql"
+    );
+
+  const evidenceMigration =
+    fileByPath.get(
+      "supabase/migrations/20260820233000_0089_automatic_qa_live_evidence_reader.sql"
+    );
+
+  const automaticEvidence =
+    fileByPath.get(
+      "src/lib/qa/automatic-evidence.ts"
+    );
+
+  const sourceContractVerified =
+    governedFiles.every(
+      (file) => file.exists
+    ) &&
+    Boolean(
+      repairMigration?.content.includes(
+        "athena_intake_ingestion_provenance"
+      ) &&
+      repairMigration.content.includes(
+        "athena_reconcile_intake_external_build_identity_metadata"
+      ) &&
+      structuralQa?.content.includes(
+        "athena_0089_structural_automatic_qa_pass"
+      ) &&
+      transactionalQa?.content.includes(
+        "historical_collision_repair_path_verified"
+      ) &&
+      transactionalQa.content.includes(
+        "canonical_post_reconciliation_state_verified"
+      ) &&
+      audit?.content.includes(
+        "eligible_build_0082_namespace_collision"
+      ) &&
+      evidenceMigration?.content.includes(
+        "athena_read_0089_external_identity_repair_qa_evidence"
+      ) &&
+      automaticEvidence?.content.includes(
+        "intakeExternalBuildIdentityMetadataCollisionProfileApplies"
+      ) &&
+      automaticEvidence.content.includes(
+        "addIntakeExternalBuildIdentityMetadataCollisionEvidence"
+      )
+    );
+
+  const {
+    data: liveEvidenceData,
+    error: liveEvidenceError
+  } = await supabase.rpc(
+    "athena_read_0089_external_identity_repair_qa_evidence"
+  );
+
+  const liveEvidence =
+    asRecord(
+      liveEvidenceData
+    );
+
+  const liveVerified =
+    !liveEvidenceError &&
+    liveEvidence?.verified === true;
+
+  const {
+    data: beforeRow,
+    error: beforeError
+  } = await supabase
+    .from(
+      "athena_intake_items"
+    )
+    .select(
+      "id, metadata"
+    )
+    .eq(
+      "id",
+      "4efe63a0-6487-46a9-be26-b5b5e28d19ee"
+    )
+    .maybeSingle<{
+      id: string;
+      metadata:
+        Record<string, unknown> | null;
+    }>();
+
+  const beforeMetadata =
+    asRecord(
+      beforeRow?.metadata
+    );
+
+  const {
+    data: replayData,
+    error: replayError
+  } = await supabase.rpc(
+    "athena_reconcile_intake_external_build_identity_metadata",
+    {
+      p_intake_id:
+        "4efe63a0-6487-46a9-be26-b5b5e28d19ee",
+
+      p_preparation_package_id:
+        "05d5afc8-0016-48e7-b102-da411788afa5",
+
+      p_project_key:
+        "beautydna",
+
+      p_module_key:
+        "shopify-cart-integration",
+
+      p_external_build_id:
+        "BDNA-SHOP-0001",
+
+      p_external_build_title:
+        "BDNA-SHOP-0001 BeautyDNA Offline Shopify Catalog Adapter and Launch Product Linkage Foundation",
+
+      p_operator_key:
+        "athena-0089-automatic-qa",
+
+      p_operation_key:
+        "athena-0089:automatic-qa:idempotent-replay:v1",
+
+      p_evidence: {
+        automatic_qa: true,
+        build_id: "0089",
+        expected_database_mutation:
+          false
+      }
+    }
+  );
+
+  const replay =
+    asRecord(
+      replayData
+    );
+
+  const {
+    data: afterRow,
+    error: afterError
+  } = await supabase
+    .from(
+      "athena_intake_items"
+    )
+    .select(
+      "id, metadata"
+    )
+    .eq(
+      "id",
+      "4efe63a0-6487-46a9-be26-b5b5e28d19ee"
+    )
+    .maybeSingle<{
+      id: string;
+      metadata:
+        Record<string, unknown> | null;
+    }>();
+
+  const afterMetadata =
+    asRecord(
+      afterRow?.metadata
+    );
+
+  const idempotentReplayVerified =
+    !beforeError &&
+    !replayError &&
+    !afterError &&
+    Boolean(beforeRow) &&
+    Boolean(afterRow) &&
+    replay?.status ===
+      "athena_intake_external_build_identity_metadata_reconciled" &&
+    replay?.idempotent_replay === true &&
+    JSON.stringify(
+      beforeMetadata
+    ) ===
+      JSON.stringify(
+        afterMetadata
+      );
+
+  const productionBuildVerified =
+    updates
+      .terminal_build_clean
+      ?.status === "pass";
+
+  updates.route_or_function_exists =
+    sourceContractVerified &&
+    liveVerified &&
+    productionBuildVerified
+      ? update(
+          "pass",
+
+          "Build 0089 repair, reconciliation RPC, reproducible tests, audit, live-evidence reader, and automatic-QA profile are present and the production build is clean.",
+
+          "Automatic evidence verified the governed repository files, live database evidence, and standardized Build 0089 validation logs.",
+
+          {
+            source:
+              "athena_0089_repository_live_evidence_and_build",
+
+            files:
+              governedFiles.map(
+                (file) => ({
+                  path:
+                    file.relative_path,
+
+                  exists:
+                    file.exists,
+
+                  sha256:
+                    file.sha256
+                })
+              ),
+
+            source_contract_verified:
+              sourceContractVerified,
+
+            live_verified:
+              liveVerified,
+
+            production_build_verified:
+              productionBuildVerified
+          }
+        )
+      : update(
+          "fail",
+
+          "Build 0089 governed source, live database evidence, or production-build evidence did not verify.",
+
+          liveEvidenceError?.message ||
+            "One or more governed Build 0089 source/live/build checks failed.",
+
+          {
+            source:
+              "athena_0089_repository_live_evidence_and_build",
+
+            source_contract_verified:
+              sourceContractVerified,
+
+            live_evidence:
+              liveEvidence,
+
+            production_build_verified:
+              productionBuildVerified
+          }
+        );
+
+  updates.ui_shows_expected_new_fields =
+    update(
+      "not_applicable",
+
+      "Build 0089 is a database governance and automatic-QA repair with no user-interface mutation in scope.",
+
+      "The governed Build 0089 scope explicitly excludes UI changes; automatic evidence verifies the repair through source, database, security, and lifecycle evidence instead.",
+
+      {
+        source:
+          "athena_0089_scope_contract",
+
+        project_key:
+          packet.project_key,
+
+        module_key:
+          packet.module_key,
+
+        build_session_title:
+          packet.build_session_title,
+
+        ui_mutation_required:
+          false
+      }
+    );
+
+  updates.database_read_verified =
+    liveVerified
+      ? update(
+          "pass",
+
+          "Live Athena database reads verify the canonical BDNA-SHOP-0001 identity, preserved Build 0082 provenance, exactly one reconciliation entry, and zero lifecycle rows.",
+
+          "Automatic evidence called the Build 0089 read-only live-evidence RPC.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        )
+      : update(
+          "fail",
+
+          "The Build 0089 live database state did not verify.",
+
+          liveEvidenceError?.message ||
+            "The live-evidence reader returned verified=false.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        );
+
+  updates.database_write_verified =
+    idempotentReplayVerified
+      ? update(
+          "pass",
+
+          "The governed reconciliation RPC replayed idempotently and a read-after-call comparison proved the canonical Intake metadata did not change.",
+
+          "Automatic QA exercised the already-reconciled RPC path without direct table mutation.",
+
+          {
+            source:
+              "athena_reconcile_intake_external_build_identity_metadata",
+
+            idempotent_replay:
+              replay,
+
+            metadata_unchanged:
+              true
+          }
+        )
+      : update(
+          "fail",
+
+          "The governed reconciliation RPC idempotence/read-after-call verification failed.",
+
+          replayError?.message ||
+            beforeError?.message ||
+            afterError?.message ||
+            "The replay result or metadata comparison was contradictory.",
+
+          {
+            source:
+              "athena_reconcile_intake_external_build_identity_metadata",
+
+            replay,
+
+            before_read_error:
+              beforeError?.message ||
+              null,
+
+            after_read_error:
+              afterError?.message ||
+              null
+          }
+        );
+
+  const canonicalSavedRowVerified =
+    liveVerified &&
+    liveEvidence
+      ?.metadata_build_id ===
+      "BDNA-SHOP-0001" &&
+    liveEvidence
+      ?.canonical_external_build_id ===
+      "BDNA-SHOP-0001" &&
+    liveEvidence
+      ?.preserved_originating_athena_build_id ===
+      "0082" &&
+    Number(
+      liveEvidence
+        ?.reconciliation_entry_count
+    ) === 1 &&
+    Number(
+      liveEvidence
+        ?.lifecycle_transition_count
+    ) === 0 &&
+    Number(
+      liveEvidence
+        ?.lifecycle_state_count
+    ) === 0;
+
+  updates.saved_row_verified =
+    canonicalSavedRowVerified
+      ? update(
+          "pass",
+
+          "The canonical affected Intake row and its persisted reconciliation evidence match the Build 0089 contract.",
+
+          "Live read-after-write evidence verifies canonical external identity, preserved ingestion provenance, one reconciliation entry, and no external lifecycle start.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        )
+      : update(
+          "fail",
+
+          "The canonical affected Intake row does not match the Build 0089 persisted-state contract.",
+
+          "Automatic live evidence returned one or more contradictory saved-row values.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        );
+
+  const securityVerified =
+    liveVerified &&
+    liveEvidence
+      ?.service_role_rpc_execute ===
+      true &&
+    liveEvidence
+      ?.authenticated_rpc_execute ===
+      false &&
+    liveEvidence
+      ?.anon_rpc_execute ===
+      false &&
+    liveEvidence
+      ?.direct_service_role_intake_update ===
+      false &&
+    liveEvidence
+      ?.append_only_evidence_guard ===
+      true;
+
+  updates.rls_policy_reviewed =
+    securityVerified
+      ? update(
+          "pass",
+
+          "Build 0089 security boundaries verify live: service_role can execute only the governed RPC, browser roles cannot, direct service_role Intake UPDATE remains denied, and append-only evidence guards remain active.",
+
+          "Automatic QA used the read-only live-evidence RPC to inspect actual PostgreSQL privilege and trigger state.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        )
+      : update(
+          "fail",
+
+          "Build 0089 live security boundaries did not verify.",
+
+          "One or more function privileges, direct-table restrictions, or append-only evidence guards are contradictory.",
+
+          {
+            source:
+              "athena_read_0089_external_identity_repair_qa_evidence",
+
+            live_evidence:
+              liveEvidence
+          }
+        );
+}
+
 
 async function addBuildTimerEvidence(input: {
   supabase: SupabaseClient;
@@ -4741,6 +5282,17 @@ export async function applyAutomaticQaEvidence(
       supabase,
       packet,
       qaRunId,
+      repoRoot,
+      updates: generic.updates
+    });
+  } else if (
+    intakeExternalBuildIdentityMetadataCollisionProfileApplies(
+      packet
+    )
+  ) {
+    await addIntakeExternalBuildIdentityMetadataCollisionEvidence({
+      supabase,
+      packet,
       repoRoot,
       updates: generic.updates
     });
