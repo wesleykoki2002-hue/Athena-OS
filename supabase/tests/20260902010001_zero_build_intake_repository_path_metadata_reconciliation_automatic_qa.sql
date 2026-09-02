@@ -14,7 +14,7 @@ begin
   if position('repository_path_reconciliations' in v_def) > 0 then v_tests := v_tests + 1; else raise exception 'QA 7'; end if;
   if position('operation key was already used with conflicting arguments' in lower(v_def)) > 0 then v_tests := v_tests + 1; else raise exception 'QA 8'; end if;
   if position('repository path conflicts' in lower(v_def)) > 0 then v_tests := v_tests + 1; else raise exception 'QA 9'; end if;
-  if position("to_jsonb(v_after) - 'metadata' - 'updated_at'" in v_def) > 0 then v_tests := v_tests + 1; else raise exception 'QA 10'; end if;
+  if position('to_jsonb(v_after) - ''metadata'' - ''updated_at''' in v_def) > 0 then v_tests := v_tests + 1; else raise exception 'QA 10'; end if;
   if has_function_privilege('service_role','public.athena_reconcile_intake_repository_path_metadata(uuid,uuid,text,text,text,text,text,text,jsonb)','EXECUTE') then v_tests := v_tests + 1; else raise exception 'QA 11'; end if;
   if not has_function_privilege('authenticated','public.athena_reconcile_intake_repository_path_metadata(uuid,uuid,text,text,text,text,text,text,jsonb)','EXECUTE') then v_tests := v_tests + 1; else raise exception 'QA 12'; end if;
   if not has_function_privilege('anon','public.athena_reconcile_intake_repository_path_metadata(uuid,uuid,text,text,text,text,text,text,jsonb)','EXECUTE') then v_tests := v_tests + 1; else raise exception 'QA 13'; end if;
