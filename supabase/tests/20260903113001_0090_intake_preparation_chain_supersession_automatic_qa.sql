@@ -13,6 +13,7 @@ declare
   v_candidates_before jsonb;
   v_candidates_after jsonb;
   v_classification jsonb;
+  v_fixture_candidates jsonb;
   v_original_hash text;
   v_original_hash_after text;
 begin
@@ -42,7 +43,10 @@ begin
 
   -- QA-01 ordinary/same-ID duplicate remains visible and blocks before supersession.
   if not exists (select 1 from jsonb_array_elements(v_candidates_before) c where c->>'source_id'=v_original_package::text) then raise exception 'QA-01 failed'; end if;
-  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_candidates_before);
+  select coalesce(jsonb_agg(candidate), '[]'::jsonb) into v_fixture_candidates
+  from jsonb_array_elements(v_candidates_before) candidate
+  where candidate->>'source_id' = v_original_package::text;
+  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_fixture_candidates);
   if coalesce((v_classification->>'start_allowed')::boolean,true) then raise exception 'QA-01 failed'; end if;
 
   -- QA-02 self-supersession fails.
@@ -91,7 +95,10 @@ begin
   v_candidates_after := public.athena_pre_build_collect_candidates(v_replacement_intake,v_replacement_package,'beautydna','repository-governance','BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence']);
   -- QA-11 exact predecessor is excluded and replacement becomes eligible.
   if exists (select 1 from jsonb_array_elements(v_candidates_after) c where c->>'source_id'=v_original_package::text) then raise exception 'QA-11 failed'; end if;
-  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_candidates_after);
+  select coalesce(jsonb_agg(candidate), '[]'::jsonb) into v_fixture_candidates
+  from jsonb_array_elements(v_candidates_after) candidate
+  where candidate->>'source_id' = v_original_package::text;
+  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_fixture_candidates);
   if not coalesce((v_classification->>'start_allowed')::boolean,false) then raise exception 'QA-11 failed'; end if;
 
   insert into public.athena_intake_items
@@ -106,7 +113,10 @@ begin
   v_candidates_after := public.athena_pre_build_collect_candidates(v_replacement_intake,v_replacement_package,'beautydna','repository-governance','BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence']);
   -- QA-12 third unsuperseded duplicate remains visible and blocks.
   if not exists (select 1 from jsonb_array_elements(v_candidates_after) c where c->>'source_id'=v_third_package::text) then raise exception 'QA-12 failed'; end if;
-  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_candidates_after);
+  select coalesce(jsonb_agg(candidate), '[]'::jsonb) into v_fixture_candidates
+  from jsonb_array_elements(v_candidates_after) candidate
+  where candidate->>'source_id' in (v_original_package::text, v_third_package::text);
+  v_classification := public.athena_pre_build_classify('BDNA-GOV-0001 BeautyDNA Canonical Git Baseline, Unauthorized Mutation, and Repository Lineage Reconciliation','Repository lineage reconciliation',array['Preserve evidence'],'{}'::text[],v_fixture_candidates);
   if coalesce((v_classification->>'start_allowed')::boolean,true) then raise exception 'QA-12 failed'; end if;
   -- QA-13 original Intake/preparation evidence remains byte-equivalent.
   select md5(to_jsonb(i)::text || to_jsonb(p)::text) into v_original_hash_after
